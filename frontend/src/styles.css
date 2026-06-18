@@ -1,0 +1,90 @@
+﻿:root {
+  color: #1f2937;
+  background: #f5f7fb;
+  font-family: Inter, 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+}
+
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  background:
+    radial-gradient(circle at top left, rgba(22, 119, 255, 0.14), transparent 24%),
+    linear-gradient(180deg, #f8fbff 0%, #f5f7fb 100%);
+}
+
+#root {
+  min-height: 100vh;
+}
+
+.full-width {
+  width: 100%;
+}
+
+.page-layout {
+  min-height: 100vh;
+  background: transparent;
+}
+
+.page-content {
+  width: min(1180px, calc(100% - 32px));
+  margin: 0 auto;
+  padding: 48px 0 72px;
+}
+
+.hero-section {
+  margin-bottom: 24px;
+  padding: 40px;
+  border-radius: 28px;
+  background: rgba(255, 255, 255, 0.9);
+  box-shadow: 0 18px 50px rgba(15, 23, 42, 0.08);
+  backdrop-filter: blur(12px);
+}
+
+.hero-tag,
+.feature-tag {
+  border-radius: 999px;
+  padding-inline: 12px;
+}
+
+.hero-title,
+.section-title {
+  margin: 0 !important;
+}
+
+.hero-text,
+.section-text,
+.roadmap-description {
+  margin-bottom: 0 !important;
+  color: #4b5563;
+}
+
+.status-card {
+  margin: 24px 0;
+}
+
+.roadmap-card {
+  height: 100%;
+}
+
+.loading-box {
+  display: grid;
+  place-items: center;
+  min-height: 220px;
+}
+
+@media (max-width: 768px) {
+  .page-content {
+    width: min(100% - 24px, 1180px);
+    padding: 24px 0 40px;
+  }
+
+  .hero-section {
+    padding: 24px;
+  }
+}
