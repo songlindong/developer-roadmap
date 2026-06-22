@@ -30,18 +30,12 @@ func main() {
 	}
 	defer sqlDB.Close()
 
-	redisClient, err := database.NewRedis(context.Background(), cfg.RedisAddr, cfg.RedisPassword, cfg.RedisDB)
-	if err != nil {
-		log.Fatalf("connect redis failed: %v", err)
-	}
-	defer redisClient.Close()
-
-	roadmapService := service.NewRoadmapService(db, redisClient)
-	if err := roadmapService.Bootstrap(context.Background()); err != nil {
+	documentService := service.NewDocumentService(db)
+	if err := documentService.Bootstrap(context.Background()); err != nil {
 		log.Fatalf("bootstrap data failed: %v", err)
 	}
 
-	handlerSet := handler.NewRoadmapHandler(roadmapService, db, redisClient)
+	handlerSet := handler.NewDocumentHandler(documentService, db)
 	r := router.New(cfg, handlerSet)
 
 	log.Printf("server listening on :%s", cfg.ServerPort)

@@ -11,7 +11,7 @@ import (
 	"study-roadmap/backend/internal/handler"
 )
 
-func New(cfg config.Config, roadmapHandler *handler.RoadmapHandler) *gin.Engine {
+func New(cfg config.Config, documentHandler *handler.DocumentHandler) *gin.Engine {
 	r := gin.Default()
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173", "http://127.0.0.1:5173"},
@@ -30,8 +30,12 @@ func New(cfg config.Config, roadmapHandler *handler.RoadmapHandler) *gin.Engine 
 
 	api := r.Group("/api")
 	{
-		api.GET("/health", roadmapHandler.Health)
-		api.GET("/roadmaps", roadmapHandler.ListRoadmaps)
+		api.GET("/health", documentHandler.Health)
+		api.GET("/documents", documentHandler.ListDocuments)
+		api.GET("/documents/:id", documentHandler.GetDocument)
+		api.POST("/documents", documentHandler.CreateDocument)
+		api.PUT("/documents/:id", documentHandler.UpdateDocument)
+		api.DELETE("/documents/:id", documentHandler.DeleteDocument)
 	}
 
 	return r
