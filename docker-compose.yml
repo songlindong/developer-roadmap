@@ -21,6 +21,8 @@ services:
   backend:
     build:
       context: ./backend
+      args:
+        GOPROXY: https://goproxy.cn,direct
       dockerfile: Dockerfile
     container_name: study_backend
     restart: unless-stopped
