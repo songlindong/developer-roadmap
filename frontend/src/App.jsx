@@ -268,7 +268,7 @@ function AppContent() {
               </Button>
               {isEditing ? (
                 <Popconfirm title="确认删除这篇文档吗？" okText="删除" cancelText="取消" onConfirm={deleteDocument}>
-                  <Button danger loading={deleting}>删除文档</Button>
+                  {/* <Button danger loading={deleting}>删除文档</Button> */}
                 </Popconfirm>
               ) : null}
             </Space>
