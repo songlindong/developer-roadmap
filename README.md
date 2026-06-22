@@ -1,4 +1,4 @@
-﻿# Developer Roadmap
+# Developer Roadmap
 
 一个简洁的学习网站基础模板，包含：
 
@@ -6,6 +6,10 @@
 - 后端：Go 1.25.1 + Gin + GORM
 - 存储：MySQL 8.0 + Redis
 - 部署：Docker Compose + Nginx
+
+## 学习文档
+
+- 详细项目说明：`docs/project-guide.md`
 
 ## 项目结构
 
