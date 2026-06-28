@@ -27,6 +27,8 @@ const { TextArea, Password } = Input;
 
 const ADMIN_TOKEN_KEY = 'roadmap_admin_token';
 const AUTO_SAVE_DELAY = 1200;
+const SHOW_ADMIN_ENTRY = import.meta.env.VITE_SHOW_ADMIN_ENTRY === 'true';
+const ADMIN_LOGIN_HASH = '#/admin-login';
 const EMPTY_DOCUMENT = {
   id: null,
   title: '',
@@ -391,7 +393,7 @@ function AppContent() {
                 新增文章
               </Button>
             ) : null}
-            {!isAdmin && adminConfigured ? (
+            {SHOW_ADMIN_ENTRY && !isAdmin && adminConfigured ? (
               <Button type="text" onClick={() => setAdminModalOpen(true)}>
                 管理员入口
               </Button>
@@ -556,6 +558,70 @@ function AppContent() {
   );
 }
 
+function AdminLoginPage({ onSuccess, onBack }) {
+  const [messageApi, contextHolder] = message.useMessage();
+  const [token, setToken] = useState('');
+  const [submitting, setSubmitting] = useState(false);
+
+  const submitLogin = async () => {
+    const nextToken = token.trim();
+    if (!nextToken) {
+      messageApi.warning('请输入管理员口令');
+      return;
+    }
+
+    setSubmitting(true);
+    window.localStorage.setItem(ADMIN_TOKEN_KEY, nextToken);
+
+    try {
+      const response = await http.get('admin/status');
+      if (response.data?.data?.authenticated) {
+        messageApi.success('已进入管理模式');
+        onSuccess();
+        return;
+      }
+
+      window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+      messageApi.error('管理员口令不正确');
+    } catch (requestError) {
+      window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+      messageApi.error(requestError?.response?.data?.message || '验证失败，请稍后重试');
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  return (
+    <Layout className="page-layout">
+      <Content className="login-page-content">
+        {contextHolder}
+        <Card title="管理员登录" className="login-card">
+          <Space direction="vertical" size={16} className="full-width">
+            <Text type="secondary">这是一个不在首页暴露的隐藏管理页，输入管理员口令后进入管理模式。</Text>
+            <Password
+              size="large"
+              placeholder="请输入管理员口令"
+              value={token}
+              onChange={(event) => setToken(event.target.value)}
+              onPressEnter={submitLogin}
+            />
+            <div className="login-actions">
+              <Space wrap>
+                <Button onClick={onBack}>
+                  返回首页
+                </Button>
+                <Button type="primary" onClick={submitLogin} loading={submitting}>
+                  登录管理
+                </Button>
+              </Space>
+            </div>
+          </Space>
+        </Card>
+      </Content>
+    </Layout>
+  );
+}
+
 function autoSaveStatusText(status) {
   if (status === 'saving') return '自动保存中...';
   if (status === 'waiting') return '检测到修改，即将自动保存';
@@ -577,6 +643,30 @@ function pickCategory(items, preferredCategory) {
   return names[0] || '';
 }
 
+function AppRoutes() {
+  const [route, setRoute] = useState(window.location.hash || '');
+
+  useEffect(() => {
+    const handleHashChange = () => {
+      setRoute(window.location.hash || '');
+    };
+
+    window.addEventListener('hashchange', handleHashChange);
+    return () => window.removeEventListener('hashchange', handleHashChange);
+  }, []);
+
+  const goHome = () => {
+    window.location.hash = '';
+    setRoute('');
+  };
+
+  if (route === ADMIN_LOGIN_HASH) {
+    return <AdminLoginPage onSuccess={goHome} onBack={goHome} />;
+  }
+
+  return <AppContent />;
+}
+
 export default function App() {
   return (
     <ConfigProvider
@@ -588,7 +678,7 @@ export default function App() {
       }}
     >
       <AntdApp>
-        <AppContent />
+        <AppRoutes />
       </AntdApp>
     </ConfigProvider>
   );

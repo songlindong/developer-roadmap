@@ -1,6 +1,6 @@
 # Developer Roadmap
 
-一个简洁的大模型面试文档管理模板，包含：
+一个简洁的文档管理模板，包含：
 
 - 前端：Vite + React + Axios + Ant Design
 - 后端：Go 1.25.1 + Gin + GORM
@@ -64,12 +64,14 @@ docker compose up --build
 
 - 生产环境默认启用管理员口令校验，请在环境变量中配置 `ADMIN_TOKEN`
 - 前端普通访客只能查看文章列表和内容，不能看到新增、编辑、删除入口
+- 可通过 `VITE_SHOW_ADMIN_ENTRY=false` 隐藏首页上的“管理员入口”
+- 即使隐藏首页入口，也可通过 `/#/admin-login` 打开隐藏管理登录页
 - 管理员点击页面上的“管理员入口”并输入正确口令后，才能进入管理模式
 - `POST /api/documents`、`PUT /api/documents/:id`、`DELETE /api/documents/:id` 都会校验 `X-Admin-Token`
 
 ## 当前包含的基础能力
 
-- 后端启动时自动建表并写入一篇默认的大模型面试文档
+- 后端启动时自动建表
 - 支持文章列表查看、详情查看、按时间筛选和分页
 - 编辑区默认隐藏，点击新增或编辑后才会展开
 - 普通访客仅可查看，管理员登录后才可新建、编辑和删除

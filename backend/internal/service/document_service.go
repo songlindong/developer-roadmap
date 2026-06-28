@@ -40,39 +40,7 @@ func NewDocumentService(db *gorm.DB) *DocumentService {
 }
 
 func (s *DocumentService) Bootstrap(ctx context.Context) error {
-	if err := s.db.AutoMigrate(&model.InterviewDocument{}); err != nil {
-		return err
-	}
-
-	var count int64
-	if err := s.db.WithContext(ctx).Model(&model.InterviewDocument{}).Count(&count).Error; err != nil {
-		return err
-	}
-	if count > 0 {
-		return nil
-	}
-
-	defaultDoc := model.InterviewDocument{
-		Title:    "大模型面试准备清单",
-		Category: "面试准备",
-		Content: strings.Join([]string{
-			"一、自我介绍",
-			"1. 当前做过哪些 AI 相关项目",
-			"2. 为什么关注大模型方向",
-			"",
-			"二、基础知识",
-			"1. Transformer 的核心结构",
-			"2. Attention 为什么有效",
-			"3. 预训练和微调的区别",
-			"",
-			"三、工程落地",
-			"1. RAG 的基本流程",
-			"2. Prompt Engineering 常见方法",
-			"3. 如何做模型效果评估",
-		}, "\n"),
-	}
-
-	return s.db.WithContext(ctx).Create(&defaultDoc).Error
+	return s.db.WithContext(ctx).AutoMigrate(&model.InterviewDocument{})
 }
 
 func (s *DocumentService) ListDocuments(ctx context.Context) ([]DocumentSummary, error) {
