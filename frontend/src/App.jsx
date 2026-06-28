@@ -2,6 +2,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   App as AntdApp,
+  AutoComplete,
   Button,
   Card,
   ConfigProvider,
@@ -9,6 +10,7 @@ import {
   Input,
   Layout,
   List,
+  Modal,
   Popconfirm,
   Space,
   Spin,
@@ -21,11 +23,14 @@ import http from './api/http';
 
 const { Content } = Layout;
 const { Paragraph, Text, Title } = Typography;
-const { TextArea } = Input;
+const { TextArea, Password } = Input;
 
+const ADMIN_TOKEN_KEY = 'roadmap_admin_token';
+const AUTO_SAVE_DELAY = 1200;
 const EMPTY_DOCUMENT = {
   id: null,
   title: '',
+  category: '未分类',
   content: '',
   createdAt: '',
   updatedAt: '',
@@ -34,54 +39,81 @@ const EMPTY_DOCUMENT = {
 function AppContent() {
   const [messageApi, contextHolder] = message.useMessage();
   const [documents, setDocuments] = useState([]);
-  const [currentDocument, setCurrentDocument] = useState(EMPTY_DOCUMENT);
-  const [savedDraft, setSavedDraft] = useState({ title: '', content: '' });
+  const [selectedDocument, setSelectedDocument] = useState(EMPTY_DOCUMENT);
+  const [editorDocument, setEditorDocument] = useState(EMPTY_DOCUMENT);
+  const [savedDraft, setSavedDraft] = useState({ title: '', category: '未分类', content: '' });
+  const [activeCategory, setActiveCategory] = useState('');
+  const [editorVisible, setEditorVisible] = useState(false);
   const [listLoading, setListLoading] = useState(true);
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle');
   const [error, setError] = useState('');
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [adminConfigured, setAdminConfigured] = useState(false);
+  const [adminModalOpen, setAdminModalOpen] = useState(false);
+  const [adminTokenInput, setAdminTokenInput] = useState('');
   const autoSaveTimerRef = useRef(null);
 
-  const isEditing = Boolean(currentDocument.id);
+  const categoryStats = useMemo(() => {
+    const counts = new Map();
+    documents.forEach((item) => {
+      const name = normalizeCategory(item.category);
+      counts.set(name, (counts.get(name) || 0) + 1);
+    });
 
-  const stats = useMemo(
-    () => [
-      { label: '文档总数', value: documents.length },
-      { label: '当前模式', value: isEditing ? '编辑文档' : '新建文档' },
-      { label: '自动保存', value: autoSaveStatusLabel(autoSaveStatus) },
-    ],
-    [documents.length, isEditing, autoSaveStatus],
+    return Array.from(counts.entries())
+      .sort(([left], [right]) => left.localeCompare(right, 'zh-CN'))
+      .map(([name, count]) => ({ name, count }));
+  }, [documents]);
+
+  const categoryOptions = useMemo(
+    () => categoryStats.map((item) => ({ value: item.name })),
+    [categoryStats],
   );
 
-  const resetEditor = () => {
+  const categoryDocuments = useMemo(() => {
+    if (!activeCategory) {
+      return [];
+    }
+    return documents.filter((item) => normalizeCategory(item.category) === activeCategory);
+  }, [activeCategory, documents]);
+
+  useEffect(() => {
+    loadAdminStatus();
+    loadDocuments();
+  }, []);
+
+  useEffect(() => () => {
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
     }
-    setCurrentDocument(EMPTY_DOCUMENT);
-    setSavedDraft({ title: '', content: '' });
-    setAutoSaveStatus('idle');
-  };
+  }, []);
 
-  const applyDocument = (item) => {
-    setCurrentDocument(item);
-    setSavedDraft({
-      title: item.title || '',
-      content: item.content || '',
-    });
-    setAutoSaveStatus('saved');
+  const loadAdminStatus = async () => {
+    try {
+      const response = await http.get('admin/status');
+      const data = response.data.data || {};
+      setIsAdmin(Boolean(data.authenticated));
+      setAdminConfigured(Boolean(data.configured));
+      return data;
+    } catch {
+      setIsAdmin(false);
+      setAdminConfigured(false);
+      return { authenticated: false, configured: false };
+    }
   };
 
   const loadDocumentDetail = async (id, sourceDocuments = documents) => {
     if (!id) {
-      resetEditor();
+      setSelectedDocument(EMPTY_DOCUMENT);
       return;
     }
 
     const exists = sourceDocuments.some((item) => item.id === id);
     if (!exists) {
-      resetEditor();
+      setSelectedDocument(EMPTY_DOCUMENT);
       return;
     }
 
@@ -90,15 +122,15 @@ function AppContent() {
 
     try {
       const response = await http.get(`documents/${id}`);
-      applyDocument(response.data.data);
+      setSelectedDocument(response.data.data || EMPTY_DOCUMENT);
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || '暂时无法加载文档详情。');
+      setError(requestError?.response?.data?.message || '暂时无法加载文章详情。');
     } finally {
       setDetailLoading(false);
     }
   };
 
-  const loadDocuments = async (preferredId) => {
+  const loadDocuments = async (preferredId, preferredCategory) => {
     setListLoading(true);
     setError('');
 
@@ -108,60 +140,141 @@ function AppContent() {
       setDocuments(items);
 
       if (items.length === 0) {
-        resetEditor();
+        setActiveCategory('');
+        setSelectedDocument(EMPTY_DOCUMENT);
         return;
       }
 
-      const targetId = preferredId || currentDocument.id || items[0].id;
-      await loadDocumentDetail(targetId, items);
+      const nextCategory = pickCategory(items, preferredCategory || activeCategory);
+      const visibleItems = items.filter((item) => normalizeCategory(item.category) === nextCategory);
+      const currentVisible = visibleItems.some((item) => item.id === selectedDocument.id);
+      const preferredVisible = visibleItems.some((item) => item.id === preferredId);
+      const targetId = preferredVisible
+        ? preferredId
+        : currentVisible
+          ? selectedDocument.id
+          : visibleItems[0]?.id;
+
+      setActiveCategory(nextCategory);
+      if (targetId) {
+        await loadDocumentDetail(targetId, items);
+      } else {
+        setSelectedDocument(EMPTY_DOCUMENT);
+      }
     } catch (requestError) {
-      setError(requestError?.response?.data?.message || '暂时无法加载文档列表，请确认后端服务已启动。');
+      setError(requestError?.response?.data?.message || '暂时无法加载文章列表，请确认后端服务已启动。');
     } finally {
       setListLoading(false);
     }
   };
 
+  const handleCategoryClick = async (categoryName) => {
+    setActiveCategory(categoryName);
+    const items = documents.filter((item) => normalizeCategory(item.category) === categoryName);
+
+    if (items.length === 0) {
+      setSelectedDocument(EMPTY_DOCUMENT);
+      return;
+    }
+
+    if (!items.some((item) => item.id === selectedDocument.id)) {
+      await loadDocumentDetail(items[0].id, documents);
+    }
+  };
+
+  const openCreateEditor = () => {
+    const nextCategory = activeCategory || categoryStats[0]?.name || '未分类';
+    setError('');
+    setEditorDocument({ ...EMPTY_DOCUMENT, category: nextCategory });
+    setSavedDraft({ title: '', category: nextCategory, content: '' });
+    setAutoSaveStatus('idle');
+    setEditorVisible(true);
+  };
+
+  const openEditEditor = () => {
+    if (!selectedDocument.id) {
+      return;
+    }
+
+    setError('');
+    setEditorDocument({
+      id: selectedDocument.id,
+      title: selectedDocument.title,
+      category: normalizeCategory(selectedDocument.category),
+      content: selectedDocument.content,
+      createdAt: selectedDocument.createdAt,
+      updatedAt: selectedDocument.updatedAt,
+    });
+    setSavedDraft({
+      title: selectedDocument.title || '',
+      category: normalizeCategory(selectedDocument.category),
+      content: selectedDocument.content || '',
+    });
+    setAutoSaveStatus('saved');
+    setEditorVisible(true);
+  };
+
+  const closeEditor = () => {
+    if (autoSaveTimerRef.current) {
+      clearTimeout(autoSaveTimerRef.current);
+    }
+    setEditorVisible(false);
+    setEditorDocument(EMPTY_DOCUMENT);
+    setSavedDraft({ title: '', category: '未分类', content: '' });
+    setAutoSaveStatus('idle');
+  };
+
   const persistDocument = async ({ silent = false } = {}) => {
     const payload = {
-      title: currentDocument.title.trim(),
-      content: currentDocument.content.trim(),
+      title: editorDocument.title.trim(),
+      category: normalizeCategory(editorDocument.category),
+      content: editorDocument.content.trim(),
     };
 
     if (!payload.title || !payload.content) {
-      if (!silent) {
-        messageApi.warning('请先填写标题和正文内容');
+      if (silent) {
+        setAutoSaveStatus('draft');
+        return null;
       }
+      messageApi.warning('请先填写标题和正文内容');
       return null;
     }
 
     setSaving(true);
-    setError('');
     if (silent) {
       setAutoSaveStatus('saving');
     }
+    setError('');
 
     try {
-      const response = currentDocument.id
-        ? await http.put(`documents/${currentDocument.id}`, payload)
+      const response = editorDocument.id
+        ? await http.put(`documents/${editorDocument.id}`, payload)
         : await http.post('documents', payload);
 
       const savedItem = response.data.data;
-      applyDocument(savedItem);
+      const nextCategory = normalizeCategory(savedItem.category);
 
-      const listResponse = await http.get('documents');
-      setDocuments(listResponse.data.data || []);
-
+      setEditorDocument(savedItem);
+      setSavedDraft({
+        title: savedItem.title || '',
+        category: nextCategory,
+        content: savedItem.content || '',
+      });
+      setAutoSaveStatus('saved');
+      await loadDocuments(savedItem.id, nextCategory);
       if (!silent) {
-        messageApi.success(currentDocument.id ? '文档已更新' : '文档已创建');
+        messageApi.success(editorDocument.id ? '文章已更新' : '文章已创建');
       }
-
       return savedItem;
     } catch (requestError) {
-      const nextError = requestError?.response?.data?.message || '保存文档失败，请稍后重试。';
+      const nextError = requestError?.response?.data?.message || '保存文章失败，请稍后重试。';
       setError(nextError);
       setAutoSaveStatus('error');
       if (!silent) {
         messageApi.error(nextError);
+      }
+      if (requestError?.response?.status === 403) {
+        await loadAdminStatus();
       }
       return null;
     } finally {
@@ -170,7 +283,7 @@ function AppContent() {
   };
 
   const deleteDocument = async () => {
-    if (!currentDocument.id) {
+    if (!selectedDocument.id) {
       return;
     }
 
@@ -178,37 +291,53 @@ function AppContent() {
     setError('');
 
     try {
-      await http.delete(`documents/${currentDocument.id}`);
-      messageApi.success('文档已删除');
-      const remaining = documents.filter((item) => item.id !== currentDocument.id);
-      setDocuments(remaining);
-      const nextId = remaining[0]?.id;
-      if (nextId) {
-        await loadDocumentDetail(nextId, remaining);
-      } else {
-        resetEditor();
-      }
+      await http.delete(`documents/${selectedDocument.id}`);
+      messageApi.success('文章已删除');
+      closeEditor();
+      await loadDocuments(undefined, activeCategory);
     } catch (requestError) {
-      const nextError = requestError?.response?.data?.message || '删除文档失败，请稍后重试。';
+      const nextError = requestError?.response?.data?.message || '删除文章失败，请稍后重试。';
       setError(nextError);
       messageApi.error(nextError);
+      if (requestError?.response?.status === 403) {
+        await loadAdminStatus();
+      }
     } finally {
       setDeleting(false);
     }
   };
 
-  useEffect(() => {
-    loadDocuments();
-  }, []);
+  const submitAdminToken = async () => {
+    window.localStorage.setItem(ADMIN_TOKEN_KEY, adminTokenInput.trim());
+    const data = await loadAdminStatus();
+
+    if (data.authenticated) {
+      setAdminModalOpen(false);
+      setAdminTokenInput('');
+      messageApi.success('已进入管理模式');
+      return;
+    }
+
+    window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+    messageApi.error('管理员口令不正确');
+  };
+
+  const logoutAdmin = async () => {
+    window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+    setAdminTokenInput('');
+    closeEditor();
+    await loadAdminStatus();
+  };
 
   useEffect(() => {
-    if (detailLoading) {
+    if (!isAdmin || !editorVisible) {
       return undefined;
     }
 
     const currentDraft = {
-      title: currentDocument.title,
-      content: currentDocument.content,
+      title: editorDocument.title,
+      category: normalizeCategory(editorDocument.category),
+      content: editorDocument.content,
     };
 
     if (!currentDraft.title.trim() && !currentDraft.content.trim()) {
@@ -216,7 +345,11 @@ function AppContent() {
       return undefined;
     }
 
-    if (currentDraft.title === savedDraft.title && currentDraft.content === savedDraft.content) {
+    if (
+      currentDraft.title === savedDraft.title
+      && currentDraft.category === savedDraft.category
+      && currentDraft.content === savedDraft.content
+    ) {
       return undefined;
     }
 
@@ -227,138 +360,221 @@ function AppContent() {
 
     autoSaveTimerRef.current = setTimeout(() => {
       persistDocument({ silent: true });
-    }, 1200);
+    }, AUTO_SAVE_DELAY);
 
     return () => {
       if (autoSaveTimerRef.current) {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [currentDocument.title, currentDocument.content, currentDocument.id, savedDraft, detailLoading]);
+  }, [editorDocument, editorVisible, isAdmin, savedDraft]);
+
+  const editorTitle = editorDocument.id ? '编辑文章' : '新增文章';
 
   return (
     <Layout className="page-layout">
       <Content className="page-content">
         {contextHolder}
-        <section className="hero-section">
-          <Space direction="vertical" size={18} className="full-width">
-            <Title className="hero-title">大模型面试文档</Title>
-            <Paragraph className="hero-text">
-              页面只保留一个模块，用来管理大模型面试文档。输入标题和正文后会自动保存，右侧直接显示 Markdown 预览。
-            </Paragraph>
-            <Space wrap size={12}>
-              {stats.map((item) => (
-                <Card key={item.label} className="mini-stat-card">
-                  <Text type="secondary">{item.label}</Text>
-                  <Title level={4} className="mini-stat-value">
-                    {item.value}
-                  </Title>
-                </Card>
-              ))}
-            </Space>
-            <Space wrap>
-              <Button type="primary" onClick={() => persistDocument()} loading={saving}>
-                {isEditing ? '立即保存' : '创建文档'}
+        {error ? <Alert type="error" showIcon message={error} className="page-alert" /> : null}
+
+        <section className="toolbar-section">
+          <div>
+            <Title level={3} className="toolbar-title">文章</Title>
+            <Paragraph className="toolbar-text">按分类浏览文章，点击标题直接预览内容。</Paragraph>
+          </div>
+          <Space wrap>
+            <Button onClick={() => loadDocuments(selectedDocument.id, activeCategory)} loading={listLoading}>
+              刷新
+            </Button>
+            {isAdmin ? (
+              <Button type="primary" onClick={openCreateEditor}>
+                新增文章
               </Button>
-              <Button onClick={() => loadDocuments(currentDocument.id)} loading={listLoading}>
-                刷新列表
+            ) : null}
+            {!isAdmin && adminConfigured ? (
+              <Button type="text" onClick={() => setAdminModalOpen(true)}>
+                管理员入口
               </Button>
-              <Button onClick={() => { setError(''); resetEditor(); }}>
-                新建空白文档
+            ) : null}
+            {isAdmin ? (
+              <Button type="text" onClick={logoutAdmin}>
+                退出管理
               </Button>
-              {isEditing ? (
-                <Popconfirm title="确认删除这篇文档吗？" okText="删除" cancelText="取消" onConfirm={deleteDocument}>
-                  {/* <Button danger loading={deleting}>删除文档</Button> */}
-                </Popconfirm>
-              ) : null}
-            </Space>
+            ) : null}
           </Space>
         </section>
 
-        {error ? <Alert type="error" showIcon message={error} /> : null}
-
         <div className="workspace-grid">
-          <Card title="文档列表" extra={<Button size="small" type="link" onClick={() => loadDocuments(currentDocument.id)}>刷新</Button>} className="panel-card">
-            {listLoading ? (
-              <div className="loading-box"><Spin /></div>
-            ) : documents.length === 0 ? (
-              <Empty description="还没有文档，先创建一篇吧" />
-            ) : (
-              <List
-                dataSource={documents}
-                renderItem={(item) => (
-                  <List.Item
-                    className={item.id === currentDocument.id ? 'doc-list-item active' : 'doc-list-item'}
-                    onClick={() => loadDocumentDetail(item.id)}
-                  >
-                    <Space direction="vertical" size={6} className="full-width">
-                      <Text strong>{item.title}</Text>
-                      <Text type="secondary">{item.excerpt}</Text>
-                      <Text type="secondary">最近更新：{item.updatedAt}</Text>
-                    </Space>
-                  </List.Item>
-                )}
-              />
-            )}
-          </Card>
-
           <Space direction="vertical" size={16} className="full-width">
-            <Card title={isEditing ? '编辑文档' : '新建文档'} extra={currentDocument.updatedAt ? <Text type="secondary">最近更新：{currentDocument.updatedAt}</Text> : null} className="panel-card">
-              <Space direction="vertical" size={16} className="full-width">
-                <Input
-                  size="large"
-                  placeholder="请输入文档标题"
-                  value={currentDocument.title}
-                  onChange={(event) => setCurrentDocument((previous) => ({ ...previous, title: event.target.value }))}
-                />
-                <TextArea
-                  rows={18}
-                  placeholder="支持 Markdown，例如 # 标题、- 列表、``` 代码块"
-                  value={currentDocument.content}
-                  onChange={(event) => setCurrentDocument((previous) => ({ ...previous, content: event.target.value }))}
-                />
-                <Text type="secondary">{autoSaveStatusText(autoSaveStatus)}</Text>
-              </Space>
+            <Card title="文章分类" className="panel-card">
+              {listLoading ? (
+                <div className="loading-box"><Spin /></div>
+              ) : categoryStats.length === 0 ? (
+                <Empty description="还没有分类" />
+              ) : (
+                <div className="category-list">
+                  {categoryStats.map((item) => (
+                    <button
+                      key={item.name}
+                      type="button"
+                      className={item.name === activeCategory ? 'category-item active' : 'category-item'}
+                      onClick={() => handleCategoryClick(item.name)}
+                    >
+                      <span className="category-name">{item.name}</span>
+                      <span className="category-count">({item.count})</span>
+                    </button>
+                  ))}
+                </div>
+              )}
             </Card>
 
-            <Card title="Markdown 预览" className="panel-card">
+            <Card title={activeCategory ? `${activeCategory} 文章` : '文章标题'} className="panel-card">
+              {listLoading ? (
+                <div className="loading-box"><Spin /></div>
+              ) : categoryDocuments.length === 0 ? (
+                <Empty description="当前分类下还没有文章" />
+              ) : (
+                <List
+                  dataSource={categoryDocuments}
+                  renderItem={(item) => (
+                    <List.Item
+                      className={item.id === selectedDocument.id ? 'doc-list-item active title-only-item' : 'doc-list-item title-only-item'}
+                      onClick={() => loadDocumentDetail(item.id)}
+                    >
+                      <Text strong={item.id === selectedDocument.id}>{item.title}</Text>
+                    </List.Item>
+                  )}
+                />
+              )}
+            </Card>
+          </Space>
+
+          <Space direction="vertical" size={16} className="full-width">
+            {isAdmin && editorVisible ? (
+              <Card
+                title={editorTitle}
+                extra={<Text type="secondary">{autoSaveStatusText(autoSaveStatus)}</Text>}
+                className="panel-card"
+              >
+                <Space direction="vertical" size={16} className="full-width">
+                  <Input
+                    size="large"
+                    placeholder="请输入文章标题"
+                    value={editorDocument.title}
+                    onChange={(event) => setEditorDocument((previous) => ({ ...previous, title: event.target.value }))}
+                  />
+                  <AutoComplete
+                    options={categoryOptions}
+                    value={editorDocument.category}
+                    onChange={(value) => setEditorDocument((previous) => ({ ...previous, category: value }))}
+                  >
+                    <Input placeholder="请选择或输入文章分类" />
+                  </AutoComplete>
+                  <TextArea
+                    rows={14}
+                    placeholder="支持 Markdown，例如 # 标题、- 列表、``` 代码块"
+                    value={editorDocument.content}
+                    onChange={(event) => setEditorDocument((previous) => ({ ...previous, content: event.target.value }))}
+                  />
+                  <div className="editor-actions">
+                    <Space wrap>
+                      <Button onClick={closeEditor}>
+                        取消
+                      </Button>
+                      <Button type="primary" onClick={() => persistDocument()} loading={saving}>
+                        {editorDocument.id ? '保存修改' : '保存文章'}
+                      </Button>
+                    </Space>
+                  </div>
+                </Space>
+              </Card>
+            ) : null}
+
+            <Card
+              title="文章内容"
+              extra={isAdmin && selectedDocument.id ? (
+                <Space size={8}>
+                  <Button size="small" onClick={openEditEditor}>
+                    编辑
+                  </Button>
+                  <Popconfirm
+                    title="确认删除这篇文章吗？"
+                    okText="删除"
+                    cancelText="取消"
+                    onConfirm={deleteDocument}
+                  >
+                    <Button size="small" danger loading={deleting}>
+                      删除
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              ) : null}
+              className="panel-card content-card"
+            >
               {detailLoading ? (
                 <div className="loading-box"><Spin /></div>
-              ) : currentDocument.content ? (
+              ) : selectedDocument.content ? (
                 <Space direction="vertical" size={12} className="full-width">
-                  <Title level={4} className="section-title">{currentDocument.title || '未命名文档'}</Title>
+                  <Space size={8} wrap>
+                    <Title level={4} className="section-title">{selectedDocument.title || '未命名文章'}</Title>
+                    <Tag color="blue">{normalizeCategory(selectedDocument.category)}</Tag>
+                  </Space>
                   <Text type="secondary">
-                    创建时间：{currentDocument.createdAt || '尚未保存'}，更新时间：{currentDocument.updatedAt || '尚未保存'}
+                    发布时间：{selectedDocument.createdAt || '尚未保存'}，最近更新：{selectedDocument.updatedAt || '尚未保存'}
                   </Text>
                   <div className="document-preview markdown-preview">
-                    <ReactMarkdown>{currentDocument.content}</ReactMarkdown>
+                    <ReactMarkdown>{selectedDocument.content}</ReactMarkdown>
                   </div>
                 </Space>
               ) : (
-                <Empty description="请选择左侧文档，或先新建一篇文档" />
+                <Empty description="请选择左侧文章标题查看内容" />
               )}
             </Card>
           </Space>
         </div>
+
+        <Modal
+          title="管理员验证"
+          open={adminModalOpen}
+          onOk={submitAdminToken}
+          onCancel={() => setAdminModalOpen(false)}
+          okText="进入管理"
+          cancelText="取消"
+        >
+          <Space direction="vertical" size={12} className="full-width">
+            <Text type="secondary">输入你配置在后端环境变量里的管理员口令。</Text>
+            <Password
+              placeholder="请输入管理员口令"
+              value={adminTokenInput}
+              onChange={(event) => setAdminTokenInput(event.target.value)}
+              onPressEnter={submitAdminToken}
+            />
+          </Space>
+        </Modal>
       </Content>
     </Layout>
   );
 }
 
-function autoSaveStatusLabel(status) {
-  if (status === 'saving') return '保存中';
-  if (status === 'waiting') return '待自动保存';
-  if (status === 'saved') return '已保存';
-  if (status === 'error') return '保存失败';
-  return '未开始';
+function autoSaveStatusText(status) {
+  if (status === 'saving') return '自动保存中...';
+  if (status === 'waiting') return '检测到修改，即将自动保存';
+  if (status === 'saved') return '内容已自动保存';
+  if (status === 'error') return '自动保存失败';
+  if (status === 'draft') return '填写标题和正文后会自动保存';
+  return '编辑区已打开';
 }
 
-function autoSaveStatusText(status) {
-  if (status === 'saving') return '正在自动保存...';
-  if (status === 'waiting') return '检测到修改，将在短暂停顿后自动保存';
-  if (status === 'saved') return '内容已保存到数据库';
-  if (status === 'error') return '自动保存失败，请检查服务状态后重试';
-  return '输入标题和正文后会自动保存';
+function normalizeCategory(value) {
+  return typeof value === 'string' && value.trim() ? value.trim() : '未分类';
+}
+
+function pickCategory(items, preferredCategory) {
+  const names = Array.from(new Set(items.map((item) => normalizeCategory(item.category))));
+  if (preferredCategory && names.includes(preferredCategory)) {
+    return preferredCategory;
+  }
+  return names[0] || '';
 }
 
 export default function App() {
@@ -367,7 +583,7 @@ export default function App() {
       theme={{
         token: {
           colorPrimary: '#1677ff',
-          borderRadius: 16,
+          borderRadius: 14,
         },
       }}
     >

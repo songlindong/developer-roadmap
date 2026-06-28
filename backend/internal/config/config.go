@@ -8,6 +8,7 @@ type Config struct {
 	AppEnv     string
 	ServerPort string
 	MySQLDSN   string
+	AdminToken string
 }
 
 func Load() Config {
@@ -15,6 +16,7 @@ func Load() Config {
 		AppEnv:     getEnv("APP_ENV", "development"),
 		ServerPort: getEnv("SERVER_PORT", "8080"),
 		MySQLDSN:   getEnv("MYSQL_DSN", "root:root123@tcp(127.0.0.1:3306)/study_platform?charset=utf8mb4&parseTime=True&loc=Local"),
+		AdminToken: getEnv("ADMIN_TOKEN", "123456"),
 	}
 }
 

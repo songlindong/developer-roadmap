@@ -11,23 +11,24 @@ import (
 )
 
 type DocumentSummary struct {
-	ID        uint   `json:"id"`
-	Title     string `json:"title"`
-	Excerpt   string `json:"excerpt"`
-	UpdatedAt string `json:"updatedAt"`
+	ID       uint   `json:"id"`
+	Title    string `json:"title"`
+	Category string `json:"category"`
 }
 
 type DocumentDetail struct {
 	ID        uint   `json:"id"`
 	Title     string `json:"title"`
+	Category  string `json:"category"`
 	Content   string `json:"content"`
 	CreatedAt string `json:"createdAt"`
 	UpdatedAt string `json:"updatedAt"`
 }
 
 type SaveDocumentInput struct {
-	Title   string `json:"title"`
-	Content string `json:"content"`
+	Title    string `json:"title"`
+	Category string `json:"category"`
+	Content  string `json:"content"`
 }
 
 type DocumentService struct {
@@ -52,7 +53,8 @@ func (s *DocumentService) Bootstrap(ctx context.Context) error {
 	}
 
 	defaultDoc := model.InterviewDocument{
-		Title: "大模型面试准备清单",
+		Title:    "大模型面试准备清单",
+		Category: "面试准备",
 		Content: strings.Join([]string{
 			"一、自我介绍",
 			"1. 当前做过哪些 AI 相关项目",
@@ -82,10 +84,9 @@ func (s *DocumentService) ListDocuments(ctx context.Context) ([]DocumentSummary,
 	items := make([]DocumentSummary, 0, len(entities))
 	for _, entity := range entities {
 		items = append(items, DocumentSummary{
-			ID:        entity.ID,
-			Title:     entity.Title,
-			Excerpt:   buildExcerpt(entity.Content),
-			UpdatedAt: entity.UpdatedAt.Format("2006-01-02 15:04"),
+			ID:       entity.ID,
+			Title:    entity.Title,
+			Category: entity.Category,
 		})
 	}
 
@@ -101,6 +102,7 @@ func (s *DocumentService) GetDocument(ctx context.Context, id uint) (DocumentDet
 	return DocumentDetail{
 		ID:        entity.ID,
 		Title:     entity.Title,
+		Category:  entity.Category,
 		Content:   entity.Content,
 		CreatedAt: entity.CreatedAt.Format("2006-01-02 15:04"),
 		UpdatedAt: entity.UpdatedAt.Format("2006-01-02 15:04"),
@@ -127,8 +129,9 @@ func (s *DocumentService) UpdateDocument(ctx context.Context, id uint, input Sav
 	}
 
 	updates := map[string]any{
-		"title":   entity.Title,
-		"content": entity.Content,
+		"title":    entity.Title,
+		"category": entity.Category,
+		"content":  entity.Content,
 	}
 
 	result := s.db.WithContext(ctx).Model(&model.InterviewDocument{}).Where("id = ?", id).Updates(updates)
@@ -156,30 +159,22 @@ func (s *DocumentService) DeleteDocument(ctx context.Context, id uint) error {
 
 func normalizeDocumentInput(input SaveDocumentInput) (model.InterviewDocument, error) {
 	title := strings.TrimSpace(input.Title)
+	category := strings.TrimSpace(input.Category)
 	content := strings.TrimSpace(input.Content)
 
 	if title == "" {
 		return model.InterviewDocument{}, errors.New("标题不能为空")
+	}
+	if category == "" {
+		category = "未分类"
 	}
 	if content == "" {
 		return model.InterviewDocument{}, errors.New("内容不能为空")
 	}
 
 	return model.InterviewDocument{
-		Title:   title,
-		Content: content,
+		Title:    title,
+		Category: category,
+		Content:  content,
 	}, nil
-}
-
-func buildExcerpt(content string) string {
-	normalized := strings.Join(strings.Fields(strings.ReplaceAll(content, "\n", " ")), " ")
-	if normalized == "" {
-		return "暂无内容"
-	}
-	if len([]rune(normalized)) <= 80 {
-		return normalized
-	}
-
-	runes := []rune(normalized)
-	return string(runes[:80]) + "..."
 }
