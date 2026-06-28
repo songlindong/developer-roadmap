@@ -1,8 +1,13 @@
 package handler
 
 import (
+	"fmt"
 	"net/http"
+	"os"
+	"path/filepath"
 	"strconv"
+	"strings"
+	"time"
 
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
@@ -112,6 +117,38 @@ func (h *DocumentHandler) DeleteDocument(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "文档已删除"})
 }
 
+func (h *DocumentHandler) UploadImage(c *gin.Context) {
+	file, err := c.FormFile("file")
+	if err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "请选择要上传的图片"})
+		return
+	}
+
+	ext := strings.ToLower(filepath.Ext(file.Filename))
+	if !isAllowedImageExtension(ext) {
+		c.JSON(http.StatusBadRequest, gin.H{"message": "仅支持 jpg、jpeg、png、gif、webp 图片"})
+		return
+	}
+
+	if err := os.MkdirAll("uploads", 0o755); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "创建上传目录失败"})
+		return
+	}
+
+	filename := fmt.Sprintf("%d%s", time.Now().UnixNano(), ext)
+	dst := filepath.Join("uploads", filename)
+	if err := c.SaveUploadedFile(file, dst); err != nil {
+		c.JSON(http.StatusInternalServerError, gin.H{"message": "保存图片失败"})
+		return
+	}
+
+	c.JSON(http.StatusOK, gin.H{
+		"data": gin.H{
+			"url": "/" + filepath.ToSlash(dst),
+		},
+	})
+}
+
 func parseIDParam(c *gin.Context) (uint, bool) {
 	rawID := c.Param("id")
 	id, err := strconv.ParseUint(rawID, 10, 64)
@@ -140,4 +177,13 @@ func safeMessage(err error, fallback string) string {
 		return fallback
 	}
 	return err.Error()
+}
+
+func isAllowedImageExtension(ext string) bool {
+	switch ext {
+	case ".jpg", ".jpeg", ".png", ".gif", ".webp":
+		return true
+	default:
+		return false
+	}
 }

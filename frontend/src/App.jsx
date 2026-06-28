@@ -29,6 +29,8 @@ const ADMIN_TOKEN_KEY = 'roadmap_admin_token';
 const AUTO_SAVE_DELAY = 1200;
 const SHOW_ADMIN_ENTRY = import.meta.env.VITE_SHOW_ADMIN_ENTRY === 'true';
 const ADMIN_LOGIN_HASH = '#/admin-login';
+const MAX_IMAGE_SIDE = 1600;
+const WEBP_QUALITY = 0.82;
 const EMPTY_DOCUMENT = {
   id: null,
   title: '',
@@ -50,6 +52,7 @@ function AppContent() {
   const [detailLoading, setDetailLoading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [uploadingImage, setUploadingImage] = useState(false);
   const [autoSaveStatus, setAutoSaveStatus] = useState('idle');
   const [error, setError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
@@ -57,6 +60,7 @@ function AppContent() {
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [adminTokenInput, setAdminTokenInput] = useState('');
   const autoSaveTimerRef = useRef(null);
+  const imageInputRef = useRef(null);
 
   const categoryStats = useMemo(() => {
     const counts = new Map();
@@ -331,6 +335,58 @@ function AppContent() {
     await loadAdminStatus();
   };
 
+  const openImagePicker = () => {
+    imageInputRef.current?.click();
+  };
+
+  const uploadImage = async (event) => {
+    const file = event.target.files?.[0];
+    event.target.value = '';
+
+    if (!file) {
+      return;
+    }
+
+    const compressedFile = await compressImageBeforeUpload(file);
+    const formData = new FormData();
+    formData.append('file', compressedFile);
+
+    setUploadingImage(true);
+    setError('');
+
+    try {
+      const response = await http.post('upload/image', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      const rawUrl = response.data?.data?.url;
+      if (!rawUrl) {
+        throw new Error('图片地址为空');
+      }
+
+      const imageUrl = rawUrl.startsWith('http') ? rawUrl : `${window.location.origin}${rawUrl}`;
+      const nextLineBreak = editorDocument.content && !editorDocument.content.endsWith('\n') ? '\n' : '';
+      const markdown = `${nextLineBreak}![图片说明](${imageUrl})\n`;
+
+      setEditorDocument((previous) => ({
+        ...previous,
+        content: `${previous.content}${markdown}`,
+      }));
+      if (compressedFile.size < file.size) {
+        messageApi.success(`图片已压缩并上传，体积减少 ${formatSize(file.size - compressedFile.size)}`);
+      } else {
+        messageApi.success('图片上传成功，已插入正文');
+      }
+    } catch (requestError) {
+      const nextError = requestError?.response?.data?.message || '图片上传失败，请稍后重试。';
+      setError(nextError);
+      messageApi.error(nextError);
+    } finally {
+      setUploadingImage(false);
+    }
+  };
+
   useEffect(() => {
     if (!isAdmin || !editorVisible) {
       return undefined;
@@ -478,8 +534,18 @@ function AppContent() {
                     value={editorDocument.content}
                     onChange={(event) => setEditorDocument((previous) => ({ ...previous, content: event.target.value }))}
                   />
+                  <input
+                    ref={imageInputRef}
+                    type="file"
+                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                    className="hidden-file-input"
+                    onChange={uploadImage}
+                  />
                   <div className="editor-actions">
                     <Space wrap>
+                      <Button onClick={openImagePicker} loading={uploadingImage}>
+                        上传图片
+                      </Button>
                       <Button onClick={closeEditor}>
                         取消
                       </Button>
@@ -629,6 +695,74 @@ function autoSaveStatusText(status) {
   if (status === 'error') return '自动保存失败';
   if (status === 'draft') return '填写标题和正文后会自动保存';
   return '编辑区已打开';
+}
+
+async function compressImageBeforeUpload(file) {
+  if (!file.type.startsWith('image/') || file.type === 'image/gif') {
+    return file;
+  }
+
+  const image = await loadImage(file);
+  const scale = Math.min(1, MAX_IMAGE_SIDE / image.width, MAX_IMAGE_SIDE / image.height);
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.round(image.width * scale));
+  canvas.height = Math.max(1, Math.round(image.height * scale));
+
+  const context = canvas.getContext('2d');
+  if (!context) {
+    return file;
+  }
+
+  context.drawImage(image, 0, 0, canvas.width, canvas.height);
+
+  const outputType = 'image/webp';
+  const blob = await canvasToBlob(canvas, outputType, WEBP_QUALITY);
+  if (!blob) {
+    return file;
+  }
+
+  if (blob.size >= file.size && scale === 1) {
+    return file;
+  }
+
+  return new File([blob], renameFileExtension(file.name, outputType), {
+    type: outputType,
+    lastModified: file.lastModified,
+  });
+}
+
+function loadImage(file) {
+  return new Promise((resolve, reject) => {
+    const image = new Image();
+    const objectUrl = URL.createObjectURL(file);
+
+    image.onload = () => {
+      URL.revokeObjectURL(objectUrl);
+      resolve(image);
+    };
+    image.onerror = () => {
+      URL.revokeObjectURL(objectUrl);
+      reject(new Error('图片读取失败'));
+    };
+    image.src = objectUrl;
+  });
+}
+
+function canvasToBlob(canvas, type, quality) {
+  return new Promise((resolve) => {
+    canvas.toBlob(resolve, type, quality);
+  });
+}
+
+function renameFileExtension(filename, mimeType) {
+  const extension = mimeType === 'image/webp' ? '.webp' : '.jpg';
+  return filename.replace(/\.[^.]+$/, '') + extension;
+}
+
+function formatSize(size) {
+  if (size < 1024) return `${size} B`;
+  if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
+  return `${(size / (1024 * 1024)).toFixed(2)} MB`;
 }
 
 function normalizeCategory(value) {

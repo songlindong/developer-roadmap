@@ -14,6 +14,7 @@ import (
 
 func New(cfg config.Config, documentHandler *handler.DocumentHandler) *gin.Engine {
 	r := gin.Default()
+	r.Static("/uploads", "./uploads")
 	r.Use(cors.New(cors.Config{
 		AllowOrigins:     []string{"http://localhost:5173", "http://127.0.0.1:5173"},
 		AllowMethods:     []string{"GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS"},
@@ -44,6 +45,7 @@ func New(cfg config.Config, documentHandler *handler.DocumentHandler) *gin.Engin
 		api.GET("/documents/:id", documentHandler.GetDocument)
 		admin := api.Group("")
 		admin.Use(requireAdmin(cfg))
+		admin.POST("/upload/image", documentHandler.UploadImage)
 		admin.POST("/documents", documentHandler.CreateDocument)
 		admin.PUT("/documents/:id", documentHandler.UpdateDocument)
 		admin.DELETE("/documents/:id", documentHandler.DeleteDocument)

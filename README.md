@@ -68,6 +68,7 @@ docker compose up --build
 - 即使隐藏首页入口，也可通过 `/#/admin-login` 打开隐藏管理登录页
 - 管理员点击页面上的“管理员入口”并输入正确口令后，才能进入管理模式
 - `POST /api/documents`、`PUT /api/documents/:id`、`DELETE /api/documents/:id` 都会校验 `X-Admin-Token`
+- 管理员编辑文章时支持上传本地图片，接口为 `POST /api/upload/image`，上传成功后会插入 Markdown 图片链接
 
 ## 当前包含的基础能力
 

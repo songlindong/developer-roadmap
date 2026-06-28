@@ -162,6 +162,10 @@ body {
   justify-content: flex-end;
 }
 
+.hidden-file-input {
+  display: none;
+}
+
 .content-card .ant-card-body {
   padding-top: 20px;
 }
