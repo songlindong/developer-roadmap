@@ -428,6 +428,7 @@ function AppContent() {
   }, [editorDocument, editorVisible, isAdmin, savedDraft]);
 
   const editorTitle = editorDocument.id ? '编辑文章' : '新增文章';
+  const currentCategoryCount = categoryDocuments.length;
 
   return (
     <Layout className="page-layout">
@@ -435,36 +436,50 @@ function AppContent() {
         {contextHolder}
         {error ? <Alert type="error" showIcon message={error} className="page-alert" /> : null}
 
-        <section className="toolbar-section">
-          <div>
-            <Title level={3} className="toolbar-title">文章</Title>
-            <Paragraph className="toolbar-text">按分类浏览文章，点击标题直接预览内容。</Paragraph>
+        <section className="hero-section">
+          <div className="hero-copy">
+            <Text className="hero-eyebrow">Knowledge Base</Text>
+            <Title level={2} className="hero-title">文章与文档</Title>
+            <Paragraph className="hero-text">
+              用更简洁的方式管理分类、文章与内容预览，界面保持克制，重点只留给内容本身。
+            </Paragraph>
+            <Space wrap size={10} className="hero-meta">
+              <span className="hero-meta-item">分类 {categoryStats.length}</span>
+              <span className="hero-meta-item">文章 {documents.length}</span>
+              <span className="hero-meta-item">{isAdmin ? '当前为管理模式' : '当前为访客模式'}</span>
+            </Space>
           </div>
-          <Space wrap>
-            <Button onClick={() => loadDocuments(selectedDocument.id, activeCategory)} loading={listLoading}>
-              刷新
-            </Button>
-            {isAdmin ? (
-              <Button type="primary" onClick={openCreateEditor}>
-                新增文章
+          <div className="hero-actions">
+            <Space wrap>
+              <Button className="soft-button" onClick={() => loadDocuments(selectedDocument.id, activeCategory)} loading={listLoading}>
+                刷新内容
               </Button>
-            ) : null}
-            {SHOW_ADMIN_ENTRY && !isAdmin && adminConfigured ? (
-              <Button type="text" onClick={() => setAdminModalOpen(true)}>
-                管理员入口
-              </Button>
-            ) : null}
-            {isAdmin ? (
-              <Button type="text" onClick={logoutAdmin}>
-                退出管理
-              </Button>
-            ) : null}
-          </Space>
+              {isAdmin ? (
+                <Button type="primary" className="primary-button" onClick={openCreateEditor}>
+                  新建文章
+                </Button>
+              ) : null}
+              {SHOW_ADMIN_ENTRY && !isAdmin && adminConfigured ? (
+                <Button type="text" className="ghost-link-button" onClick={() => setAdminModalOpen(true)}>
+                  管理员入口
+                </Button>
+              ) : null}
+              {isAdmin ? (
+                <Button type="text" className="ghost-link-button" onClick={logoutAdmin}>
+                  退出管理
+                </Button>
+              ) : null}
+            </Space>
+          </div>
         </section>
 
         <div className="workspace-grid">
           <Space direction="vertical" size={16} className="full-width">
-            <Card title="文章分类" className="panel-card">
+            <Card className="panel-card sidebar-card">
+              <div className="panel-heading">
+                <Text className="panel-eyebrow">Categories</Text>
+                <Title level={4} className="panel-title">文章分类</Title>
+              </div>
               {listLoading ? (
                 <div className="loading-box"><Spin /></div>
               ) : categoryStats.length === 0 ? (
@@ -486,7 +501,14 @@ function AppContent() {
               )}
             </Card>
 
-            <Card title={activeCategory ? `${activeCategory} 文章` : '文章标题'} className="panel-card">
+            <Card className="panel-card sidebar-card">
+              <div className="panel-heading panel-heading-tight">
+                <div>
+                  <Text className="panel-eyebrow">Titles</Text>
+                  <Title level={4} className="panel-title">{activeCategory || '文章标题'}</Title>
+                </div>
+                <Text className="panel-count">{currentCategoryCount}</Text>
+              </div>
               {listLoading ? (
                 <div className="loading-box"><Spin /></div>
               ) : categoryDocuments.length === 0 ? (
@@ -509,11 +531,15 @@ function AppContent() {
 
           <Space direction="vertical" size={16} className="full-width">
             {isAdmin && editorVisible ? (
-              <Card
-                title={editorTitle}
-                extra={<Text type="secondary">{autoSaveStatusText(autoSaveStatus)}</Text>}
-                className="panel-card"
-              >
+              <Card className="panel-card editor-card">
+                <div className="editor-head">
+                  <div>
+                    <Text className="panel-eyebrow">Editor</Text>
+                    <Title level={4} className="panel-title">{editorTitle}</Title>
+                    <Paragraph className="editor-tip">支持自动保存、Markdown 编辑与图片上传。</Paragraph>
+                  </div>
+                  <Text className="editor-status">{autoSaveStatusText(autoSaveStatus)}</Text>
+                </div>
                 <Space direction="vertical" size={16} className="full-width">
                   <Input
                     size="large"
@@ -543,13 +569,13 @@ function AppContent() {
                   />
                   <div className="editor-actions">
                     <Space wrap>
-                      <Button onClick={openImagePicker} loading={uploadingImage}>
+                      <Button className="soft-button" onClick={openImagePicker} loading={uploadingImage}>
                         上传图片
                       </Button>
-                      <Button onClick={closeEditor}>
+                      <Button className="soft-button" onClick={closeEditor}>
                         取消
                       </Button>
-                      <Button type="primary" onClick={() => persistDocument()} loading={saving}>
+                      <Button type="primary" className="primary-button" onClick={() => persistDocument()} loading={saving}>
                         {editorDocument.id ? '保存修改' : '保存文章'}
                       </Button>
                     </Space>
@@ -558,38 +584,45 @@ function AppContent() {
               </Card>
             ) : null}
 
-            <Card
-              title="文章内容"
-              extra={isAdmin && selectedDocument.id ? (
-                <Space size={8}>
-                  <Button size="small" onClick={openEditEditor}>
-                    编辑
-                  </Button>
-                  <Popconfirm
-                    title="确认删除这篇文章吗？"
-                    okText="删除"
-                    cancelText="取消"
-                    onConfirm={deleteDocument}
-                  >
-                    <Button size="small" danger loading={deleting}>
-                      删除
+            <Card className="panel-card content-card">
+              <div className="content-head">
+                <div>
+                  <Text className="panel-eyebrow">Preview</Text>
+                  <Title level={4} className="panel-title">文章内容</Title>
+                </div>
+                {isAdmin && selectedDocument.id ? (
+                  <Space size={8}>
+                    <Button size="small" className="soft-button" onClick={openEditEditor}>
+                      编辑
                     </Button>
-                  </Popconfirm>
-                </Space>
-              ) : null}
-              className="panel-card content-card"
-            >
+                    <Popconfirm
+                      title="确认删除这篇文章吗？"
+                      description="删除后不可恢复，请谨慎操作。"
+                      okText="删除"
+                      cancelText="取消"
+                      okButtonProps={{ danger: true }}
+                      onConfirm={deleteDocument}
+                    >
+                      <Button size="small" danger className="danger-button" loading={deleting}>
+                        删除
+                      </Button>
+                    </Popconfirm>
+                  </Space>
+                ) : null}
+              </div>
               {detailLoading ? (
                 <div className="loading-box"><Spin /></div>
               ) : selectedDocument.content ? (
-                <Space direction="vertical" size={12} className="full-width">
-                  <Space size={8} wrap>
-                    <Title level={4} className="section-title">{selectedDocument.title || '未命名文章'}</Title>
-                    <Tag color="blue">{normalizeCategory(selectedDocument.category)}</Tag>
-                  </Space>
-                  <Text type="secondary">
-                    发布时间：{selectedDocument.createdAt || '尚未保存'}，最近更新：{selectedDocument.updatedAt || '尚未保存'}
-                  </Text>
+                <Space direction="vertical" size={16} className="full-width">
+                  <div className="article-head">
+                    <div className="article-title-row">
+                      <Title level={3} className="article-title">{selectedDocument.title || '未命名文章'}</Title>
+                      <Tag bordered={false} className="article-tag">{normalizeCategory(selectedDocument.category)}</Tag>
+                    </div>
+                    <Text className="article-meta">
+                      发布时间：{selectedDocument.createdAt || '尚未保存'} · 最近更新：{selectedDocument.updatedAt || '尚未保存'}
+                    </Text>
+                  </div>
                   <div className="document-preview markdown-preview">
                     <ReactMarkdown>{selectedDocument.content}</ReactMarkdown>
                   </div>
@@ -608,9 +641,11 @@ function AppContent() {
           onCancel={() => setAdminModalOpen(false)}
           okText="进入管理"
           cancelText="取消"
+          className="admin-modal"
+          okButtonProps={{ className: 'primary-button' }}
         >
           <Space direction="vertical" size={12} className="full-width">
-            <Text type="secondary">输入你配置在后端环境变量里的管理员口令。</Text>
+            <Text className="modal-tip">输入你配置在后端环境变量里的管理员口令。</Text>
             <Password
               placeholder="请输入管理员口令"
               value={adminTokenInput}
@@ -661,28 +696,37 @@ function AdminLoginPage({ onSuccess, onBack }) {
     <Layout className="page-layout">
       <Content className="login-page-content">
         {contextHolder}
-        <Card title="管理员登录" className="login-card">
-          <Space direction="vertical" size={16} className="full-width">
-            <Text type="secondary">这是一个不在首页暴露的隐藏管理页，输入管理员口令后进入管理模式。</Text>
-            <Password
-              size="large"
-              placeholder="请输入管理员口令"
-              value={token}
-              onChange={(event) => setToken(event.target.value)}
-              onPressEnter={submitLogin}
-            />
-            <div className="login-actions">
-              <Space wrap>
-                <Button onClick={onBack}>
-                  返回首页
-                </Button>
-                <Button type="primary" onClick={submitLogin} loading={submitting}>
-                  登录管理
-                </Button>
-              </Space>
-            </div>
-          </Space>
-        </Card>
+        <section className="login-shell">
+          <div className="login-copy">
+            <Text className="hero-eyebrow">Private Access</Text>
+            <Title level={2} className="login-title">管理员登录</Title>
+            <Paragraph className="login-text">
+              这是一个不在首页暴露的隐藏管理页。输入管理员口令后进入管理模式，用于新建、编辑和删除文章。
+            </Paragraph>
+          </div>
+          <Card className="login-card">
+            <Space direction="vertical" size={18} className="full-width">
+              <Text className="modal-tip">仅管理员可访问，验证成功后会自动返回首页。</Text>
+              <Password
+                size="large"
+                placeholder="请输入管理员口令"
+                value={token}
+                onChange={(event) => setToken(event.target.value)}
+                onPressEnter={submitLogin}
+              />
+              <div className="login-actions">
+                <Space wrap>
+                  <Button className="soft-button" onClick={onBack}>
+                    返回首页
+                  </Button>
+                  <Button type="primary" className="primary-button" onClick={submitLogin} loading={submitting}>
+                    登录管理
+                  </Button>
+                </Space>
+              </div>
+            </Space>
+          </Card>
+        </section>
       </Content>
     </Layout>
   );
@@ -806,8 +850,14 @@ export default function App() {
     <ConfigProvider
       theme={{
         token: {
-          colorPrimary: '#1677ff',
-          borderRadius: 14,
+          colorPrimary: '#111827',
+          colorBgBase: '#f4f1ea',
+          colorText: '#151515',
+          colorTextSecondary: '#6f6a61',
+          borderRadius: 18,
+          borderRadiusLG: 24,
+          colorBorderSecondary: '#e7e0d4',
+          boxShadowSecondary: '0 24px 80px rgba(34, 29, 20, 0.08)',
         },
       }}
     >
