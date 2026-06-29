@@ -53,7 +53,6 @@ function AppContent() {
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
-  const [autoSaveStatus, setAutoSaveStatus] = useState('idle');
   const [error, setError] = useState('');
   const [isAdmin, setIsAdmin] = useState(false);
   const [adminConfigured, setAdminConfigured] = useState(false);
@@ -193,7 +192,6 @@ function AppContent() {
     setError('');
     setEditorDocument({ ...EMPTY_DOCUMENT, category: nextCategory });
     setSavedDraft({ title: '', category: nextCategory, content: '' });
-    setAutoSaveStatus('idle');
     setEditorVisible(true);
   };
 
@@ -216,7 +214,6 @@ function AppContent() {
       category: normalizeCategory(selectedDocument.category),
       content: selectedDocument.content || '',
     });
-    setAutoSaveStatus('saved');
     setEditorVisible(true);
   };
 
@@ -227,7 +224,41 @@ function AppContent() {
     setEditorVisible(false);
     setEditorDocument(EMPTY_DOCUMENT);
     setSavedDraft({ title: '', category: '未分类', content: '' });
-    setAutoSaveStatus('idle');
+  };
+
+  const syncSavedDocument = (savedItem, draftSnapshot) => {
+    const summary = {
+      id: savedItem.id,
+      title: draftSnapshot.title,
+      category: draftSnapshot.category,
+    };
+
+    setDocuments((previous) => {
+      const index = previous.findIndex((item) => item.id === savedItem.id);
+      if (index === -1) {
+        return [summary, ...previous];
+      }
+
+      const next = [...previous];
+      next[index] = { ...next[index], ...summary };
+      return next;
+    });
+
+    setSelectedDocument((previous) => {
+      if (previous.id && previous.id !== savedItem.id) {
+        return previous;
+      }
+
+      return {
+        ...previous,
+        ...savedItem,
+        title: draftSnapshot.title,
+        category: draftSnapshot.category,
+        content: draftSnapshot.content,
+      };
+    });
+
+    setActiveCategory(draftSnapshot.category);
   };
 
   const persistDocument = async ({ silent = false } = {}) => {
@@ -239,18 +270,18 @@ function AppContent() {
 
     if (!payload.title || !payload.content) {
       if (silent) {
-        setAutoSaveStatus('draft');
         return null;
       }
       messageApi.warning('请先填写标题和正文内容');
       return null;
     }
 
-    setSaving(true);
-    if (silent) {
-      setAutoSaveStatus('saving');
+    const draftSnapshot = { ...payload };
+
+    if (!silent) {
+      setSaving(true);
+      setError('');
     }
-    setError('');
 
     try {
       const response = editorDocument.id
@@ -260,23 +291,26 @@ function AppContent() {
       const savedItem = response.data.data;
       const nextCategory = normalizeCategory(savedItem.category);
 
-      setEditorDocument(savedItem);
-      setSavedDraft({
-        title: savedItem.title || '',
-        category: nextCategory,
-        content: savedItem.content || '',
-      });
-      setAutoSaveStatus('saved');
-      await loadDocuments(savedItem.id, nextCategory);
-      if (!silent) {
+      setSavedDraft(draftSnapshot);
+
+      if (silent) {
+        setEditorDocument((previous) => ({
+          ...previous,
+          id: savedItem.id ?? previous.id,
+          createdAt: savedItem.createdAt || previous.createdAt,
+          updatedAt: savedItem.updatedAt || previous.updatedAt,
+        }));
+        syncSavedDocument(savedItem, { ...draftSnapshot, category: nextCategory });
+      } else {
+        setEditorDocument(savedItem);
+        await loadDocuments(savedItem.id, nextCategory);
         messageApi.success(editorDocument.id ? '文章已更新' : '文章已创建');
       }
       return savedItem;
     } catch (requestError) {
       const nextError = requestError?.response?.data?.message || '保存文章失败，请稍后重试。';
-      setError(nextError);
-      setAutoSaveStatus('error');
       if (!silent) {
+        setError(nextError);
         messageApi.error(nextError);
       }
       if (requestError?.response?.status === 403) {
@@ -284,7 +318,9 @@ function AppContent() {
       }
       return null;
     } finally {
-      setSaving(false);
+      if (!silent) {
+        setSaving(false);
+      }
     }
   };
 
@@ -399,7 +435,6 @@ function AppContent() {
     };
 
     if (!currentDraft.title.trim() && !currentDraft.content.trim()) {
-      setAutoSaveStatus('idle');
       return undefined;
     }
 
@@ -411,7 +446,6 @@ function AppContent() {
       return undefined;
     }
 
-    setAutoSaveStatus('waiting');
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
     }
@@ -538,7 +572,7 @@ function AppContent() {
                     <Title level={4} className="panel-title">{editorTitle}</Title>
                     <Paragraph className="editor-tip">支持自动保存、Markdown 编辑与图片上传。</Paragraph>
                   </div>
-                  <Text className="editor-status">{autoSaveStatusText(autoSaveStatus)}</Text>
+                  <Text className="editor-status">自动保存已开启</Text>
                 </div>
                 <Space direction="vertical" size={16} className="full-width">
                   <Input
