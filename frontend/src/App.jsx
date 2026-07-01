@@ -19,6 +19,7 @@ import {
   message,
 } from 'antd';
 import ReactMarkdown from 'react-markdown';
+import remarkBreaks from 'remark-breaks';
 import http from './api/http';
 
 const { Content } = Layout;
@@ -574,47 +575,66 @@ function AppContent() {
                   </div>
                   <Text className="editor-status">自动保存已开启</Text>
                 </div>
-                <Space direction="vertical" size={16} className="full-width">
-                  <Input
-                    size="large"
-                    placeholder="请输入文章标题"
-                    value={editorDocument.title}
-                    onChange={(event) => setEditorDocument((previous) => ({ ...previous, title: event.target.value }))}
-                  />
-                  <AutoComplete
-                    options={categoryOptions}
-                    value={editorDocument.category}
-                    onChange={(value) => setEditorDocument((previous) => ({ ...previous, category: value }))}
-                  >
-                    <Input placeholder="请选择或输入文章分类" />
-                  </AutoComplete>
-                  <TextArea
-                    rows={14}
-                    placeholder="支持 Markdown，例如 # 标题、- 列表、``` 代码块"
-                    value={editorDocument.content}
-                    onChange={(event) => setEditorDocument((previous) => ({ ...previous, content: event.target.value }))}
-                  />
-                  <input
-                    ref={imageInputRef}
-                    type="file"
-                    accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
-                    className="hidden-file-input"
-                    onChange={uploadImage}
-                  />
-                  <div className="editor-actions">
-                    <Space wrap>
-                      <Button className="soft-button" onClick={openImagePicker} loading={uploadingImage}>
-                        上传图片
-                      </Button>
-                      <Button className="soft-button" onClick={closeEditor}>
-                        取消
-                      </Button>
-                      <Button type="primary" className="primary-button" onClick={() => persistDocument()} loading={saving}>
-                        {editorDocument.id ? '保存修改' : '保存文章'}
-                      </Button>
+                <div className="editor-split-layout">
+                  <div className="editor-form-panel">
+                    <Space direction="vertical" size={16} className="full-width">
+                      <Input
+                        size="large"
+                        placeholder="请输入文章标题"
+                        value={editorDocument.title}
+                        onChange={(event) => setEditorDocument((previous) => ({ ...previous, title: event.target.value }))}
+                      />
+                      <AutoComplete
+                        options={categoryOptions}
+                        value={editorDocument.category}
+                        onChange={(value) => setEditorDocument((previous) => ({ ...previous, category: value }))}
+                      >
+                        <Input placeholder="请选择或输入文章分类" />
+                      </AutoComplete>
+                      <TextArea
+                        rows={18}
+                        placeholder="支持 Markdown，例如 # 标题、- 列表、``` 代码块"
+                        value={editorDocument.content}
+                        onChange={(event) => setEditorDocument((previous) => ({ ...previous, content: event.target.value }))}
+                      />
+                      <input
+                        ref={imageInputRef}
+                        type="file"
+                        accept="image/png,image/jpeg,image/jpg,image/gif,image/webp"
+                        className="hidden-file-input"
+                        onChange={uploadImage}
+                      />
+                      <div className="editor-actions">
+                        <Space wrap>
+                          <Button className="soft-button" onClick={openImagePicker} loading={uploadingImage}>
+                            上传图片
+                          </Button>
+                          <Button className="soft-button" onClick={closeEditor}>
+                            取消
+                          </Button>
+                          <Button type="primary" className="primary-button" onClick={() => persistDocument()} loading={saving}>
+                            {editorDocument.id ? '保存修改' : '保存文章'}
+                          </Button>
+                        </Space>
+                      </div>
                     </Space>
                   </div>
-                </Space>
+                  <div className="editor-preview-panel">
+                    <div className="editor-preview-head">
+                      <Text className="panel-eyebrow">Live Preview</Text>
+                      <Text className="panel-count">实时预览</Text>
+                    </div>
+                    <div className="editor-preview-meta">
+                      <Title level={4} className="editor-preview-title">{editorDocument.title || '未命名文章'}</Title>
+                      <Tag bordered={false} className="article-tag">{normalizeCategory(editorDocument.category)}</Tag>
+                    </div>
+                    <div className="document-preview markdown-preview editor-live-preview">
+                      <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                        {editorDocument.content || '从左侧开始输入内容，这里会实时显示预览效果。'}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                </div>
               </Card>
             ) : null}
 
@@ -658,7 +678,7 @@ function AppContent() {
                     </Text>
                   </div>
                   <div className="document-preview markdown-preview">
-                    <ReactMarkdown>{selectedDocument.content}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkBreaks]}>{selectedDocument.content}</ReactMarkdown>
                   </div>
                 </Space>
               ) : (

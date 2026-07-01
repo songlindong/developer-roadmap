@@ -272,6 +272,46 @@ body::before {
   padding: 26px;
 }
 
+.editor-split-layout {
+  display: grid;
+  grid-template-columns: minmax(0, 1.1fr) minmax(0, 0.9fr);
+  gap: 18px;
+  align-items: start;
+}
+
+.editor-form-panel,
+.editor-preview-panel {
+  min-width: 0;
+}
+
+.editor-preview-panel {
+  padding: 18px;
+  border: 1px solid rgba(106, 90, 68, 0.1);
+  border-radius: 24px;
+  background: rgba(255, 255, 255, 0.42);
+}
+
+.editor-preview-head,
+.editor-preview-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.editor-preview-meta {
+  margin: 10px 0 16px;
+  flex-wrap: wrap;
+}
+
+.editor-preview-title {
+  margin: 0 !important;
+}
+
+.editor-live-preview {
+  min-height: 480px;
+}
+
 .editor-status {
   padding-top: 6px;
   white-space: nowrap;
@@ -554,9 +594,15 @@ body::before {
   .panel-heading,
   .content-head,
   .editor-head,
-  .article-title-row {
+  .article-title-row,
+  .editor-preview-head,
+  .editor-preview-meta {
     flex-direction: column;
     align-items: flex-start;
+  }
+
+  .editor-split-layout {
+    grid-template-columns: 1fr;
   }
 
   .editor-status {
