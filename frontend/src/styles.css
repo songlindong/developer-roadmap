@@ -431,6 +431,28 @@ textarea.editor-textarea {
   box-shadow: 0 16px 40px rgba(44, 35, 24, 0.12);
 }
 
+.markdown-preview table {
+  width: 100%;
+  border-collapse: collapse;
+  margin: 16px 0;
+  font-size: 14px;
+  background: rgba(255, 255, 255, 0.72);
+}
+
+.markdown-preview th,
+.markdown-preview td {
+  padding: 12px 14px;
+  border: 1px solid rgba(106, 90, 68, 0.12);
+  text-align: left;
+  vertical-align: top;
+}
+
+.markdown-preview th {
+  background: rgba(236, 229, 219, 0.7);
+  font-weight: 600;
+  color: #1d1813;
+}
+
 .markdown-preview pre {
   padding: 18px;
   overflow-x: auto;

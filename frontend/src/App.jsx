@@ -19,6 +19,7 @@ import {
   message,
 } from 'antd';
 import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import http from './api/http';
 
@@ -630,7 +631,7 @@ function AppContent() {
                       <Tag bordered={false} className="article-tag">{normalizeCategory(editorDocument.category)}</Tag>
                     </div>
                     <div className="document-preview markdown-preview editor-live-preview">
-                      <ReactMarkdown remarkPlugins={[remarkBreaks]}>
+                      <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>
                         {editorDocument.content || '从左侧开始输入内容，这里会实时显示预览效果。'}
                       </ReactMarkdown>
                     </div>
@@ -679,7 +680,7 @@ function AppContent() {
                     </Text>
                   </div>
                   <div className="document-preview markdown-preview">
-                    <ReactMarkdown remarkPlugins={[remarkBreaks]}>{selectedDocument.content}</ReactMarkdown>
+                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{selectedDocument.content}</ReactMarkdown>
                   </div>
                 </Space>
               ) : (
