@@ -592,6 +592,7 @@ function AppContent() {
                         <Input placeholder="请选择或输入文章分类" />
                       </AutoComplete>
                       <TextArea
+                        className="editor-textarea"
                         rows={18}
                         placeholder="支持 Markdown，例如 # 标题、- 列表、``` 代码块"
                         value={editorDocument.content}
