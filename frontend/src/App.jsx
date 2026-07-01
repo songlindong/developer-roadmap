@@ -577,7 +577,7 @@ function AppContent() {
                 </div>
                 <div className="editor-split-layout">
                   <div className="editor-form-panel">
-                    <Space direction="vertical" size={16} className="full-width">
+                    <Space direction="vertical" size={16} className="full-width editor-form-stack">
                       <Input
                         size="large"
                         placeholder="请输入文章标题"
