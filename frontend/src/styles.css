@@ -400,8 +400,29 @@ textarea.editor-textarea {
   max-height: calc(100vh - 170px);
   margin-top: 14px;
   padding-top: 14px;
-  overflow-y: auto;
+  padding-right: 6px;
+  overflow-y: scroll;
+  scrollbar-gutter: stable;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(106, 90, 68, 0.38) transparent;
   border-top: 1px solid rgba(106, 90, 68, 0.12);
+}
+
+.toc-list::-webkit-scrollbar {
+  width: 8px;
+}
+
+.toc-list::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.toc-list::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(106, 90, 68, 0.28);
+}
+
+.toc-list::-webkit-scrollbar-thumb:hover {
+  background: rgba(106, 90, 68, 0.44);
 }
 
 .toc-item {

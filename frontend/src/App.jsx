@@ -95,10 +95,7 @@ function AppContent() {
     [selectedDocument.content],
   );
 
-  const articleMarkdownComponents = useMemo(
-    () => createHeadingComponents(articleTocItems),
-    [articleTocItems],
-  );
+  const articleMarkdownComponents = createHeadingComponents(articleTocItems);
 
   useEffect(() => {
     loadAdminStatus();
@@ -524,7 +521,12 @@ function AppContent() {
   const scrollToHeading = (headingId) => {
     setActiveHeadingId(headingId);
     const element = document.getElementById(headingId);
-    element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    if (!element) {
+      return;
+    }
+
+    const top = element.getBoundingClientRect().top + window.scrollY - 96;
+    window.scrollTo({ top, behavior: 'smooth' });
   };
 
   return (
