@@ -49,9 +49,9 @@ body::before {
 .page-content {
   position: relative;
   z-index: 1;
-  width: min(1360px, calc(100% - 48px));
+  width: min(1820px, calc(100% - 24px));
   margin: 0 auto;
-  padding: 40px 0 72px;
+  padding: 20px 0 56px;
 }
 
 .login-page-content {
@@ -74,12 +74,12 @@ body::before {
   grid-template-columns: minmax(0, 1fr) auto;
   gap: 24px;
   align-items: end;
-  margin-bottom: 18px;
-  padding: 28px 30px;
+  margin-bottom: 14px;
+  padding: 22px 26px;
   border: 1px solid rgba(106, 90, 68, 0.14);
-  border-radius: 32px;
-  background: rgba(255, 252, 247, 0.84);
-  box-shadow: 0 28px 80px rgba(48, 38, 27, 0.06);
+  border-radius: 26px;
+  background: rgba(255, 252, 247, 0.92);
+  box-shadow: 0 16px 48px rgba(48, 38, 27, 0.05);
   backdrop-filter: blur(14px);
 }
 
@@ -150,21 +150,21 @@ body::before {
 
 .workspace-grid {
   display: grid;
-  grid-template-columns: 310px minmax(0, 1fr);
-  gap: 18px;
+  grid-template-columns: 262px minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
 .panel-card {
   border: 1px solid rgba(106, 90, 68, 0.14);
-  border-radius: 28px;
-  background: rgba(255, 252, 247, 0.9);
-  box-shadow: 0 20px 60px rgba(44, 35, 24, 0.05);
+  border-radius: 22px;
+  background: rgba(255, 252, 247, 0.96);
+  box-shadow: 0 12px 36px rgba(44, 35, 24, 0.04);
   overflow: hidden;
 }
 
 .panel-card .ant-card-body {
-  padding: 22px;
+  padding: 18px;
 }
 
 .sidebar-card {
@@ -269,7 +269,7 @@ body::before {
 
 .editor-card .ant-card-body,
 .content-card .ant-card-body {
-  padding: 26px;
+  padding: 22px;
 }
 
 .content-layout {
@@ -278,8 +278,8 @@ body::before {
 
 .content-layout.with-toc {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 270px;
-  gap: 18px;
+  grid-template-columns: minmax(0, 1fr) 308px;
+  gap: 14px;
   align-items: start;
 }
 
@@ -378,10 +378,11 @@ textarea.editor-textarea {
 .toc-card {
   position: sticky;
   top: 22px;
+  overflow: visible;
 }
 
 .toc-card.collapsed .ant-card-body {
-  padding-bottom: 18px;
+  padding-bottom: 14px;
 }
 
 .toc-head {
@@ -395,22 +396,28 @@ textarea.editor-textarea {
 .toc-list {
   display: flex;
   flex-direction: column;
-  gap: 4px;
-  margin-top: 18px;
-  padding-top: 16px;
+  gap: 2px;
+  max-height: calc(100vh - 170px);
+  margin-top: 14px;
+  padding-top: 14px;
+  overflow-y: auto;
   border-top: 1px solid rgba(106, 90, 68, 0.12);
 }
 
 .toc-item {
   width: 100%;
-  padding: 8px 0;
+  display: block;
+  padding: 7px 0;
   border: 0;
   background: transparent;
   color: #3f3a33;
   text-align: left;
-  line-height: 1.6;
+  line-height: 1.55;
   cursor: pointer;
   transition: color 0.2s ease, transform 0.2s ease;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .toc-item:hover {
@@ -418,25 +425,30 @@ textarea.editor-textarea {
   transform: translateX(2px);
 }
 
+.toc-item.active {
+  color: #0f62fe;
+  font-weight: 600;
+}
+
 .toc-level-1 {
-  font-size: 18px;
+  font-size: 16px;
   font-weight: 600;
 }
 
 .toc-level-2 {
   padding-left: 10px;
-  font-size: 16px;
+  font-size: 15px;
 }
 
 .toc-level-3 {
   padding-left: 20px;
-  font-size: 15px;
+  font-size: 14px;
   color: #5f584f;
 }
 
 .toc-level-4 {
   padding-left: 30px;
-  font-size: 14px;
+  font-size: 13px;
   color: #73695f;
 }
 
@@ -473,8 +485,8 @@ textarea.editor-textarea {
 
 .document-preview {
   min-height: 360px;
-  padding: 28px 30px;
-  border-radius: 24px;
+  padding: 24px 26px;
+  border-radius: 20px;
   background: linear-gradient(180deg, rgba(255, 255, 255, 0.88), rgba(252, 248, 242, 0.92));
   line-height: 1.82;
   color: #2f2a25;

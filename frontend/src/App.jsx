@@ -15,6 +15,7 @@ import {
   Space,
   Spin,
   Tag,
+  Tooltip,
   Typography,
   message,
 } from 'antd';
@@ -61,6 +62,7 @@ function AppContent() {
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [adminTokenInput, setAdminTokenInput] = useState('');
   const [tocCollapsed, setTocCollapsed] = useState(false);
+  const [activeHeadingId, setActiveHeadingId] = useState('');
   const autoSaveTimerRef = useRef(null);
   const imageInputRef = useRef(null);
 
@@ -112,6 +114,43 @@ function AppContent() {
   useEffect(() => {
     setTocCollapsed(false);
   }, [selectedDocument.id]);
+
+  useEffect(() => {
+    if (isAdmin || tocCollapsed || articleTocItems.length === 0) {
+      setActiveHeadingId('');
+      return undefined;
+    }
+
+    const headings = articleTocItems
+      .map((item) => document.getElementById(item.id))
+      .filter(Boolean);
+
+    if (headings.length === 0) {
+      setActiveHeadingId('');
+      return undefined;
+    }
+
+    const observer = new IntersectionObserver(
+      (entries) => {
+        const visibleEntries = entries
+          .filter((entry) => entry.isIntersecting)
+          .sort((left, right) => left.boundingClientRect.top - right.boundingClientRect.top);
+
+        if (visibleEntries.length > 0) {
+          setActiveHeadingId(visibleEntries[0].target.id);
+        }
+      },
+      {
+        rootMargin: '0px 0px -70% 0px',
+        threshold: [0, 1],
+      },
+    );
+
+    headings.forEach((heading) => observer.observe(heading));
+    setActiveHeadingId(headings[0].id);
+
+    return () => observer.disconnect();
+  }, [articleTocItems, isAdmin, selectedDocument.id, tocCollapsed]);
 
   const loadAdminStatus = async () => {
     try {
@@ -483,6 +522,7 @@ function AppContent() {
   const showVisitorToc = !isAdmin && articleTocItems.length > 0 && Boolean(selectedDocument.content);
 
   const scrollToHeading = (headingId) => {
+    setActiveHeadingId(headingId);
     const element = document.getElementById(headingId);
     element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
   };
@@ -733,14 +773,15 @@ function AppContent() {
                   {!tocCollapsed ? (
                     <div className="toc-list">
                       {articleTocItems.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          className={`toc-item toc-level-${Math.min(item.level, 4)}`}
-                          onClick={() => scrollToHeading(item.id)}
-                        >
-                          {item.text}
-                        </button>
+                        <Tooltip key={item.id} title={item.text} placement="left">
+                          <button
+                            type="button"
+                            className={`toc-item toc-level-${Math.min(item.level, 4)}${item.id === activeHeadingId ? ' active' : ''}`}
+                            onClick={() => scrollToHeading(item.id)}
+                          >
+                            {item.text}
+                          </button>
+                        </Tooltip>
                       ))}
                     </div>
                   ) : null}
