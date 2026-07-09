@@ -400,16 +400,16 @@ textarea.editor-textarea {
   max-height: calc(100vh - 170px);
   margin-top: 14px;
   padding-top: 14px;
-  padding-right: 6px;
+  padding-right: 10px;
   overflow-y: scroll;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
-  scrollbar-color: rgba(106, 90, 68, 0.38) transparent;
+  scrollbar-color: rgba(106, 90, 68, 0.22) transparent;
   border-top: 1px solid rgba(106, 90, 68, 0.12);
 }
 
 .toc-list::-webkit-scrollbar {
-  width: 8px;
+  width: 6px;
 }
 
 .toc-list::-webkit-scrollbar-track {
@@ -418,16 +418,17 @@ textarea.editor-textarea {
 
 .toc-list::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: rgba(106, 90, 68, 0.28);
+  background: rgba(106, 90, 68, 0.18);
 }
 
 .toc-list::-webkit-scrollbar-thumb:hover {
-  background: rgba(106, 90, 68, 0.44);
+  background: rgba(106, 90, 68, 0.3);
 }
 
 .toc-item {
-  width: 100%;
+  width: calc(100% - 2px);
   display: block;
+  min-width: 0;
   padding: 7px 0;
   border: 0;
   background: transparent;
@@ -439,6 +440,7 @@ textarea.editor-textarea {
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  box-sizing: border-box;
 }
 
 .toc-item:hover {

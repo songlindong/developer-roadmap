@@ -15,7 +15,6 @@ import {
   Space,
   Spin,
   Tag,
-  Tooltip,
   Typography,
   message,
 } from 'antd';
@@ -65,6 +64,7 @@ function AppContent() {
   const [activeHeadingId, setActiveHeadingId] = useState('');
   const autoSaveTimerRef = useRef(null);
   const imageInputRef = useRef(null);
+  const tocListRef = useRef(null);
 
   const categoryStats = useMemo(() => {
     const counts = new Map();
@@ -148,6 +148,24 @@ function AppContent() {
 
     return () => observer.disconnect();
   }, [articleTocItems, isAdmin, selectedDocument.id, tocCollapsed]);
+
+  useEffect(() => {
+    if (!activeHeadingId || tocCollapsed) {
+      return;
+    }
+
+    const listElement = tocListRef.current;
+    const activeElement = listElement?.querySelector(`button[data-heading-id="${activeHeadingId}"]`);
+    if (!listElement || !activeElement) {
+      return;
+    }
+
+    const nextTop = activeElement.offsetTop - (listElement.clientHeight / 2) + (activeElement.clientHeight / 2);
+    listElement.scrollTo({
+      top: Math.max(0, nextTop),
+      behavior: 'smooth',
+    });
+  }, [activeHeadingId, tocCollapsed]);
 
   const loadAdminStatus = async () => {
     try {
@@ -773,17 +791,18 @@ function AppContent() {
                     </Button>
                   </div>
                   {!tocCollapsed ? (
-                    <div className="toc-list">
+                    <div ref={tocListRef} className="toc-list">
                       {articleTocItems.map((item) => (
-                        <Tooltip key={item.id} title={item.text} placement="left">
-                          <button
-                            type="button"
-                            className={`toc-item toc-level-${Math.min(item.level, 4)}${item.id === activeHeadingId ? ' active' : ''}`}
-                            onClick={() => scrollToHeading(item.id)}
-                          >
-                            {item.text}
-                          </button>
-                        </Tooltip>
+                        <button
+                          key={item.id}
+                          type="button"
+                          title={item.text}
+                          data-heading-id={item.id}
+                          className={`toc-item toc-level-${Math.min(item.level, 4)}${item.id === activeHeadingId ? ' active' : ''}`}
+                          onClick={() => scrollToHeading(item.id)}
+                        >
+                          {item.text}
+                        </button>
                       ))}
                     </div>
                   ) : null}
