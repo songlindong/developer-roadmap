@@ -60,6 +60,7 @@ function AppContent() {
   const [adminConfigured, setAdminConfigured] = useState(false);
   const [adminModalOpen, setAdminModalOpen] = useState(false);
   const [adminTokenInput, setAdminTokenInput] = useState('');
+  const [tocCollapsed, setTocCollapsed] = useState(false);
   const autoSaveTimerRef = useRef(null);
   const imageInputRef = useRef(null);
 
@@ -87,6 +88,16 @@ function AppContent() {
     return documents.filter((item) => normalizeCategory(item.category) === activeCategory);
   }, [activeCategory, documents]);
 
+  const articleTocItems = useMemo(
+    () => extractMarkdownHeadings(selectedDocument.content),
+    [selectedDocument.content],
+  );
+
+  const articleMarkdownComponents = useMemo(
+    () => createHeadingComponents(articleTocItems),
+    [articleTocItems],
+  );
+
   useEffect(() => {
     loadAdminStatus();
     loadDocuments();
@@ -97,6 +108,10 @@ function AppContent() {
       clearTimeout(autoSaveTimerRef.current);
     }
   }, []);
+
+  useEffect(() => {
+    setTocCollapsed(false);
+  }, [selectedDocument.id]);
 
   const loadAdminStatus = async () => {
     try {
@@ -465,6 +480,12 @@ function AppContent() {
 
   const editorTitle = editorDocument.id ? '编辑文章' : '新增文章';
   const currentCategoryCount = categoryDocuments.length;
+  const showVisitorToc = !isAdmin && articleTocItems.length > 0 && Boolean(selectedDocument.content);
+
+  const scrollToHeading = (headingId) => {
+    const element = document.getElementById(headingId);
+    element?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  };
 
   return (
     <Layout className="page-layout">
@@ -640,53 +661,92 @@ function AppContent() {
               </Card>
             ) : null}
 
-            <Card className="panel-card content-card">
-              <div className="content-head">
-                <div>
-                  <Text className="panel-eyebrow">Preview</Text>
-                  <Title level={4} className="panel-title">文章内容</Title>
-                </div>
-                {isAdmin && selectedDocument.id ? (
-                  <Space size={8}>
-                    <Button size="small" className="soft-button" onClick={openEditEditor}>
-                      编辑
-                    </Button>
-                    <Popconfirm
-                      title="确认删除这篇文章吗？"
-                      description="删除后不可恢复，请谨慎操作。"
-                      okText="删除"
-                      cancelText="取消"
-                      okButtonProps={{ danger: true }}
-                      onConfirm={deleteDocument}
-                    >
-                      <Button size="small" danger className="danger-button" loading={deleting}>
-                        删除
+            <div className={showVisitorToc ? 'content-layout with-toc' : 'content-layout'}>
+              <Card className="panel-card content-card">
+                <div className="content-head">
+                  <div>
+                    <Text className="panel-eyebrow">Preview</Text>
+                    <Title level={4} className="panel-title">文章内容</Title>
+                  </div>
+                  {isAdmin && selectedDocument.id ? (
+                    <Space size={8}>
+                      <Button size="small" className="soft-button" onClick={openEditEditor}>
+                        编辑
                       </Button>
-                    </Popconfirm>
-                  </Space>
-                ) : null}
-              </div>
-              {detailLoading ? (
-                <div className="loading-box"><Spin /></div>
-              ) : selectedDocument.content ? (
-                <Space direction="vertical" size={16} className="full-width">
-                  <div className="article-head">
-                    <div className="article-title-row">
-                      <Title level={3} className="article-title">{selectedDocument.title || '未命名文章'}</Title>
-                      <Tag bordered={false} className="article-tag">{normalizeCategory(selectedDocument.category)}</Tag>
+                      <Popconfirm
+                        title="确认删除这篇文章吗？"
+                        description="删除后不可恢复，请谨慎操作。"
+                        okText="删除"
+                        cancelText="取消"
+                        okButtonProps={{ danger: true }}
+                        onConfirm={deleteDocument}
+                      >
+                        <Button size="small" danger className="danger-button" loading={deleting}>
+                          删除
+                        </Button>
+                      </Popconfirm>
+                    </Space>
+                  ) : null}
+                </div>
+                {detailLoading ? (
+                  <div className="loading-box"><Spin /></div>
+                ) : selectedDocument.content ? (
+                  <Space direction="vertical" size={16} className="full-width">
+                    <div className="article-head">
+                      <div className="article-title-row">
+                        <Title level={3} className="article-title">{selectedDocument.title || '未命名文章'}</Title>
+                        <Tag bordered={false} className="article-tag">{normalizeCategory(selectedDocument.category)}</Tag>
+                      </div>
+                      <Text className="article-meta">
+                        发布时间：{selectedDocument.createdAt || '尚未保存'} · 最近更新：{selectedDocument.updatedAt || '尚未保存'}
+                      </Text>
                     </div>
-                    <Text className="article-meta">
-                      发布时间：{selectedDocument.createdAt || '尚未保存'} · 最近更新：{selectedDocument.updatedAt || '尚未保存'}
-                    </Text>
+                    <div className="document-preview markdown-preview">
+                      <ReactMarkdown
+                        remarkPlugins={[remarkGfm, remarkBreaks]}
+                        components={articleMarkdownComponents}
+                      >
+                        {selectedDocument.content}
+                      </ReactMarkdown>
+                    </div>
+                  </Space>
+                ) : (
+                  <Empty description="请选择左侧文章标题查看内容" />
+                )}
+              </Card>
+
+              {showVisitorToc ? (
+                <Card className={`panel-card toc-card${tocCollapsed ? ' collapsed' : ''}`}>
+                  <div className="panel-heading panel-heading-tight toc-head">
+                    <div>
+                      <Text className="panel-eyebrow">Outline</Text>
+                      <Title level={4} className="panel-title">目录</Title>
+                    </div>
+                    <Button
+                      type="text"
+                      className="ghost-link-button toc-toggle"
+                      onClick={() => setTocCollapsed((previous) => !previous)}
+                    >
+                      {tocCollapsed ? '展开' : '收起'}
+                    </Button>
                   </div>
-                  <div className="document-preview markdown-preview">
-                    <ReactMarkdown remarkPlugins={[remarkGfm, remarkBreaks]}>{selectedDocument.content}</ReactMarkdown>
-                  </div>
-                </Space>
-              ) : (
-                <Empty description="请选择左侧文章标题查看内容" />
-              )}
-            </Card>
+                  {!tocCollapsed ? (
+                    <div className="toc-list">
+                      {articleTocItems.map((item) => (
+                        <button
+                          key={item.id}
+                          type="button"
+                          className={`toc-item toc-level-${Math.min(item.level, 4)}`}
+                          onClick={() => scrollToHeading(item.id)}
+                        >
+                          {item.text}
+                        </button>
+                      ))}
+                    </div>
+                  ) : null}
+                </Card>
+              ) : null}
+            </div>
           </Space>
         </div>
 
@@ -863,6 +923,92 @@ function formatSize(size) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / (1024 * 1024)).toFixed(2)} MB`;
+}
+
+function extractMarkdownHeadings(content) {
+  if (!content) {
+    return [];
+  }
+
+  const items = [];
+  const usedIds = new Map();
+  const lines = content.split('\n');
+  let inCodeBlock = false;
+
+  lines.forEach((line) => {
+    const trimmed = line.trim();
+    if (trimmed.startsWith('```')) {
+      inCodeBlock = !inCodeBlock;
+      return;
+    }
+    if (inCodeBlock) {
+      return;
+    }
+
+    const match = trimmed.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
+    if (!match) {
+      return;
+    }
+
+    const level = match[1].length;
+    const text = cleanupHeadingText(match[2]);
+    if (!text) {
+      return;
+    }
+
+    const baseId = slugifyHeading(text);
+    const count = (usedIds.get(baseId) || 0) + 1;
+    usedIds.set(baseId, count);
+
+    items.push({
+      id: count === 1 ? baseId : `${baseId}-${count}`,
+      level,
+      text,
+    });
+  });
+
+  return items;
+}
+
+function cleanupHeadingText(value) {
+  return value
+    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
+    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
+    .replace(/[`*_~]/g, '')
+    .trim();
+}
+
+function slugifyHeading(value) {
+  const slug = value
+    .toLowerCase()
+    .trim()
+    .replace(/\s+/g, '-')
+    .replace(/[^\w\u4e00-\u9fa5-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+
+  return slug || 'section';
+}
+
+function createHeadingComponents(items) {
+  let headingIndex = 0;
+
+  const renderHeading = (Tag) => function HeadingComponent({ children }) {
+    const current = items[headingIndex];
+    const headingId = current?.id || `section-${headingIndex + 1}`;
+    headingIndex += 1;
+
+    return <Tag id={headingId} className="article-anchor-heading">{children}</Tag>;
+  };
+
+  return {
+    h1: renderHeading('h1'),
+    h2: renderHeading('h2'),
+    h3: renderHeading('h3'),
+    h4: renderHeading('h4'),
+    h5: renderHeading('h5'),
+    h6: renderHeading('h6'),
+  };
 }
 
 function normalizeCategory(value) {
