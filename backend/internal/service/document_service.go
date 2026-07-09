@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"strings"
+	"time"
 
 	"gorm.io/gorm"
 
@@ -34,6 +35,8 @@ type SaveDocumentInput struct {
 type DocumentService struct {
 	db *gorm.DB
 }
+
+var displayLocation = time.FixedZone("Asia/Shanghai", 8*60*60)
 
 func NewDocumentService(db *gorm.DB) *DocumentService {
 	return &DocumentService{db: db}
@@ -72,8 +75,8 @@ func (s *DocumentService) GetDocument(ctx context.Context, id uint) (DocumentDet
 		Title:     entity.Title,
 		Category:  entity.Category,
 		Content:   entity.Content,
-		CreatedAt: entity.CreatedAt.Format("2006-01-02 15:04"),
-		UpdatedAt: entity.UpdatedAt.Format("2006-01-02 15:04"),
+		CreatedAt: formatDisplayTime(entity.CreatedAt),
+		UpdatedAt: formatDisplayTime(entity.UpdatedAt),
 	}, nil
 }
 
@@ -145,4 +148,11 @@ func normalizeDocumentInput(input SaveDocumentInput) (model.InterviewDocument, e
 		Category: category,
 		Content:  content,
 	}, nil
+}
+
+func formatDisplayTime(value time.Time) string {
+	if value.IsZero() {
+		return ""
+	}
+	return value.In(displayLocation).Format("2006-01-02 15:04")
 }
