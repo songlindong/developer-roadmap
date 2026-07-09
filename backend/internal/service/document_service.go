@@ -45,7 +45,7 @@ func (s *DocumentService) Bootstrap(ctx context.Context) error {
 
 func (s *DocumentService) ListDocuments(ctx context.Context) ([]DocumentSummary, error) {
 	var entities []model.InterviewDocument
-	if err := s.db.WithContext(ctx).Order("updated_at desc, id desc").Find(&entities).Error; err != nil {
+	if err := s.db.WithContext(ctx).Order("created_at desc, id desc").Find(&entities).Error; err != nil {
 		return nil, err
 	}
 
