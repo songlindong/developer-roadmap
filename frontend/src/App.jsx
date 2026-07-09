@@ -87,7 +87,13 @@ function AppContent() {
     if (!activeCategory) {
       return [];
     }
-    return documents.filter((item) => normalizeCategory(item.category) === activeCategory);
+    return documents
+      .filter((item) => normalizeCategory(item.category) === activeCategory)
+      .sort((left, right) => {
+        const leftTime = Date.parse((left.createdAt || '').replace(' ', 'T'));
+        const rightTime = Date.parse((right.createdAt || '').replace(' ', 'T'));
+        return (Number.isNaN(rightTime) ? 0 : rightTime) - (Number.isNaN(leftTime) ? 0 : leftTime);
+      });
   }, [activeCategory, documents]);
 
   const articleTocItems = useMemo(
@@ -533,7 +539,6 @@ function AppContent() {
   }, [editorDocument, editorVisible, isAdmin, savedDraft]);
 
   const editorTitle = editorDocument.id ? '编辑文章' : '新增文章';
-  const currentCategoryCount = categoryDocuments.length;
   const showVisitorToc = !isAdmin && articleTocItems.length > 0 && Boolean(selectedDocument.content);
 
   const scrollToHeading = (headingId) => {
@@ -624,7 +629,6 @@ function AppContent() {
                   <Text className="panel-eyebrow">Titles</Text>
                   <Title level={4} className="panel-title">{activeCategory || '文章标题'}</Title>
                 </div>
-                <Text className="panel-count">{currentCategoryCount}</Text>
               </div>
               {listLoading ? (
                 <div className="loading-box"><Spin /></div>
