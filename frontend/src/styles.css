@@ -278,7 +278,7 @@ body::before {
 
 .content-layout.with-toc {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) 308px;
+  grid-template-columns: minmax(0, 1fr) 348px;
   gap: 14px;
   align-items: start;
 }
@@ -381,6 +381,10 @@ textarea.editor-textarea {
   overflow: visible;
 }
 
+.toc-card .ant-card-body {
+  padding: 16px 14px;
+}
+
 .toc-card.collapsed .ant-card-body {
   padding-bottom: 14px;
 }
@@ -400,7 +404,7 @@ textarea.editor-textarea {
   max-height: calc(100vh - 170px);
   margin-top: 14px;
   padding-top: 14px;
-  padding-right: 10px;
+  padding-right: 8px;
   overflow-y: scroll;
   scrollbar-gutter: stable;
   scrollbar-width: thin;
@@ -426,8 +430,9 @@ textarea.editor-textarea {
 }
 
 .toc-item {
-  width: calc(100% - 2px);
-  display: block;
+  width: 100%;
+  display: flex;
+  align-items: center;
   min-width: 0;
   padding: 7px 0;
   border: 0;
@@ -437,10 +442,16 @@ textarea.editor-textarea {
   line-height: 1.55;
   cursor: pointer;
   transition: color 0.2s ease, transform 0.2s ease;
+  box-sizing: border-box;
+}
+
+.toc-item-text {
+  display: block;
+  min-width: 0;
+  width: 100%;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  box-sizing: border-box;
 }
 
 .toc-item:hover {
@@ -464,13 +475,13 @@ textarea.editor-textarea {
 }
 
 .toc-level-3 {
-  padding-left: 20px;
+  padding-left: 16px;
   font-size: 14px;
   color: #5f584f;
 }
 
 .toc-level-4 {
-  padding-left: 30px;
+  padding-left: 22px;
   font-size: 13px;
   color: #73695f;
 }

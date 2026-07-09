@@ -801,7 +801,7 @@ function AppContent() {
                           className={`toc-item toc-level-${Math.min(item.level, 4)}${item.id === activeHeadingId ? ' active' : ''}`}
                           onClick={() => scrollToHeading(item.id)}
                         >
-                          {item.text}
+                          <span className="toc-item-text">{item.text}</span>
                         </button>
                       ))}
                     </div>
@@ -1013,6 +1013,10 @@ function extractMarkdownHeadings(content) {
     }
 
     const level = match[1].length;
+    if (level > 2) {
+      return;
+    }
+
     const text = cleanupHeadingText(match[2]);
     if (!text) {
       return;
