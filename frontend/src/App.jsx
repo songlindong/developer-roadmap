@@ -6,6 +6,7 @@ import {
   Button,
   Card,
   ConfigProvider,
+  Drawer,
   Empty,
   Input,
   Layout,
@@ -62,6 +63,8 @@ function AppContent() {
   const [adminTokenInput, setAdminTokenInput] = useState('');
   const [tocCollapsed, setTocCollapsed] = useState(false);
   const [activeHeadingId, setActiveHeadingId] = useState('');
+  const [isMobile, setIsMobile] = useState(() => detectPhoneDevice());
+  const [mobilePanel, setMobilePanel] = useState('');
   const autoSaveTimerRef = useRef(null);
   const imageInputRef = useRef(null);
   const tocListRef = useRef(null);
@@ -117,6 +120,12 @@ function AppContent() {
   useEffect(() => {
     setTocCollapsed(false);
   }, [selectedDocument.id]);
+
+  useEffect(() => {
+    if (!isMobile) {
+      setMobilePanel('');
+    }
+  }, [isMobile]);
 
   useEffect(() => {
     if (isAdmin || tocCollapsed || articleTocItems.length === 0) {
@@ -256,11 +265,18 @@ function AppContent() {
 
     if (items.length === 0) {
       setSelectedDocument(EMPTY_DOCUMENT);
+      if (isMobile) {
+        setMobilePanel('');
+      }
       return;
     }
 
     if (!items.some((item) => item.id === selectedDocument.id)) {
       await loadDocumentDetail(items[0].id, documents);
+    }
+
+    if (isMobile) {
+      setMobilePanel('titles');
     }
   };
 
@@ -540,6 +556,16 @@ function AppContent() {
 
   const editorTitle = editorDocument.id ? '编辑文章' : '新增文章';
   const showVisitorToc = !isAdmin && articleTocItems.length > 0 && Boolean(selectedDocument.content);
+  const hasActiveCategory = Boolean(activeCategory);
+  const openMobilePanel = (panelName) => setMobilePanel(panelName);
+  const closeMobilePanel = () => setMobilePanel('');
+
+  const openDocumentFromList = async (id) => {
+    await loadDocumentDetail(id);
+    if (isMobile) {
+      closeMobilePanel();
+    }
+  };
 
   const scrollToHeading = (headingId) => {
     setActiveHeadingId(headingId);
@@ -550,10 +576,77 @@ function AppContent() {
 
     const top = element.getBoundingClientRect().top + window.scrollY - 96;
     window.scrollTo({ top, behavior: 'smooth' });
+    if (isMobile) {
+      closeMobilePanel();
+    }
   };
 
+  const categoryPanelContent = listLoading ? (
+    <div className="loading-box"><Spin /></div>
+  ) : categoryStats.length === 0 ? (
+    <Empty description="还没有分类" />
+  ) : (
+    <div className="category-list">
+      {categoryStats.map((item) => (
+        <button
+          key={item.name}
+          type="button"
+          className={item.name === activeCategory ? 'category-item active' : 'category-item'}
+          onClick={() => handleCategoryClick(item.name)}
+        >
+          <span className="category-name">{item.name}</span>
+          <span className="category-count">({item.count})</span>
+        </button>
+      ))}
+    </div>
+  );
+
+  const titlePanelContent = listLoading ? (
+    <div className="loading-box"><Spin /></div>
+  ) : categoryDocuments.length === 0 ? (
+    <Empty description="当前分类下还没有文章" />
+  ) : (
+    <List
+      dataSource={categoryDocuments}
+      renderItem={(item) => (
+        <List.Item
+          className={item.id === selectedDocument.id ? 'doc-list-item active title-only-item' : 'doc-list-item title-only-item'}
+          onClick={() => openDocumentFromList(item.id)}
+        >
+          {isMobile ? (
+            <div className="doc-list-copy">
+              <Text strong={item.id === selectedDocument.id}>{item.title}</Text>
+              <Text className="doc-list-meta">{item.updatedAt || item.createdAt || '最近更新未知'}</Text>
+            </div>
+          ) : (
+            <Text strong={item.id === selectedDocument.id}>{item.title}</Text>
+          )}
+        </List.Item>
+      )}
+    />
+  );
+
+  const tocPanelContent = articleTocItems.length === 0 ? (
+    <Empty description="当前文章暂无目录" />
+  ) : (
+    <div ref={tocListRef} className="toc-list">
+      {articleTocItems.map((item) => (
+        <button
+          key={item.id}
+          type="button"
+          title={item.text}
+          data-heading-id={item.id}
+          className={`toc-item toc-level-${Math.min(item.level, 4)}${item.id === activeHeadingId ? ' active' : ''}`}
+          onClick={() => scrollToHeading(item.id)}
+        >
+          <span className="toc-item-text">{item.text}</span>
+        </button>
+      ))}
+    </div>
+  );
+
   return (
-    <Layout className="page-layout">
+    <Layout className={`page-layout${isMobile ? ' phone-mode' : ''}`}>
       <Content className="page-content">
         {contextHolder}
         {error ? <Alert type="error" showIcon message={error} className="page-alert" /> : null}
@@ -595,60 +688,45 @@ function AppContent() {
           </div>
         </section>
 
-        <div className="workspace-grid">
-          <Space direction="vertical" size={16} className="full-width">
-            <Card className="panel-card sidebar-card">
-              <div className="panel-heading">
-                <Text className="panel-eyebrow">Categories</Text>
-                <Title level={4} className="panel-title">文章分类</Title>
-              </div>
-              {listLoading ? (
-                <div className="loading-box"><Spin /></div>
-              ) : categoryStats.length === 0 ? (
-                <Empty description="还没有分类" />
-              ) : (
-                <div className="category-list">
-                  {categoryStats.map((item) => (
-                    <button
-                      key={item.name}
-                      type="button"
-                      className={item.name === activeCategory ? 'category-item active' : 'category-item'}
-                      onClick={() => handleCategoryClick(item.name)}
-                    >
-                      <span className="category-name">{item.name}</span>
-                      <span className="category-count">({item.count})</span>
-                    </button>
-                  ))}
-                </div>
-              )}
-            </Card>
+        {isMobile ? (
+          <Card className="panel-card mobile-overview-card">
+            <div className="mobile-quick-summary">
+              <Text className="panel-eyebrow">Mobile Navigation</Text>
+              <Title level={5} className="mobile-quick-title">{selectedDocument.title || '请选择文章'}</Title>
+              <Text className="mobile-quick-meta">
+                {activeCategory ? `当前分类：${activeCategory}` : '先从分类中选择你想看的内容'}
+              </Text>
+            </div>
+            <Space wrap size={8} className="hero-meta mobile-overview-meta">
+              <span className="hero-meta-item">分类 {categoryStats.length}</span>
+              <span className="hero-meta-item">当前文章 {categoryDocuments.length}</span>
+              {showVisitorToc ? <span className="hero-meta-item">目录 {articleTocItems.length}</span> : null}
+            </Space>
+          </Card>
+        ) : null}
 
-            <Card className="panel-card sidebar-card">
-              <div className="panel-heading panel-heading-tight">
-                <div>
-                  <Text className="panel-eyebrow">Titles</Text>
-                  <Title level={4} className="panel-title">{activeCategory || '文章标题'}</Title>
+        <div className="workspace-grid">
+          {!isMobile ? (
+            <Space direction="vertical" size={16} className="full-width">
+              <Card className="panel-card sidebar-card">
+                <div className="panel-heading">
+                  <Text className="panel-eyebrow">Categories</Text>
+                  <Title level={4} className="panel-title">文章分类</Title>
                 </div>
-              </div>
-              {listLoading ? (
-                <div className="loading-box"><Spin /></div>
-              ) : categoryDocuments.length === 0 ? (
-                <Empty description="当前分类下还没有文章" />
-              ) : (
-                <List
-                  dataSource={categoryDocuments}
-                  renderItem={(item) => (
-                    <List.Item
-                      className={item.id === selectedDocument.id ? 'doc-list-item active title-only-item' : 'doc-list-item title-only-item'}
-                      onClick={() => loadDocumentDetail(item.id)}
-                    >
-                      <Text strong={item.id === selectedDocument.id}>{item.title}</Text>
-                    </List.Item>
-                  )}
-                />
-              )}
-            </Card>
-          </Space>
+                {categoryPanelContent}
+              </Card>
+
+              <Card className="panel-card sidebar-card">
+                <div className="panel-heading panel-heading-tight">
+                  <div>
+                    <Text className="panel-eyebrow">Titles</Text>
+                    <Title level={4} className="panel-title">{activeCategory || '文章标题'}</Title>
+                  </div>
+                </div>
+                {titlePanelContent}
+              </Card>
+            </Space>
+          ) : null}
 
           <Space direction="vertical" size={16} className="full-width">
             {isAdmin && editorVisible ? (
@@ -725,7 +803,7 @@ function AppContent() {
               </Card>
             ) : null}
 
-            <div className={showVisitorToc ? 'content-layout with-toc' : 'content-layout'}>
+            <div className={!isMobile && showVisitorToc ? 'content-layout with-toc' : 'content-layout'}>
               <Card className="panel-card content-card">
                 <div className="content-head">
                   <div>
@@ -775,11 +853,11 @@ function AppContent() {
                     </div>
                   </Space>
                 ) : (
-                  <Empty description="请选择左侧文章标题查看内容" />
+                  <Empty description={isMobile ? '请先打开下方的分类或文章面板开始阅读' : '请选择左侧文章标题查看内容'} />
                 )}
               </Card>
 
-              {showVisitorToc ? (
+              {showVisitorToc && !isMobile ? (
                 <Card className={`panel-card toc-card${tocCollapsed ? ' collapsed' : ''}`}>
                   <div className="panel-heading panel-heading-tight toc-head">
                     <div>
@@ -794,27 +872,70 @@ function AppContent() {
                       {tocCollapsed ? '展开' : '收起'}
                     </Button>
                   </div>
-                  {!tocCollapsed ? (
-                    <div ref={tocListRef} className="toc-list">
-                      {articleTocItems.map((item) => (
-                        <button
-                          key={item.id}
-                          type="button"
-                          title={item.text}
-                          data-heading-id={item.id}
-                          className={`toc-item toc-level-${Math.min(item.level, 4)}${item.id === activeHeadingId ? ' active' : ''}`}
-                          onClick={() => scrollToHeading(item.id)}
-                        >
-                          <span className="toc-item-text">{item.text}</span>
-                        </button>
-                      ))}
-                    </div>
-                  ) : null}
+                  {!tocCollapsed ? tocPanelContent : null}
                 </Card>
               ) : null}
             </div>
           </Space>
         </div>
+
+        {isMobile ? (
+          <>
+            <nav className="mobile-quick-nav">
+              <Button
+                className={`soft-button mobile-nav-button${mobilePanel === 'categories' ? ' is-active' : ''}`}
+                onClick={() => openMobilePanel('categories')}
+              >
+                分类
+              </Button>
+              <Button
+                className={`soft-button mobile-nav-button${mobilePanel === 'titles' ? ' is-active' : ''}`}
+                onClick={() => openMobilePanel('titles')}
+                disabled={!hasActiveCategory}
+              >
+                文章
+              </Button>
+              {showVisitorToc ? (
+                <Button
+                  className={`soft-button mobile-nav-button${mobilePanel === 'toc' ? ' is-active' : ''}`}
+                  onClick={() => openMobilePanel('toc')}
+                >
+                  目录
+                </Button>
+              ) : null}
+            </nav>
+            <Drawer
+              title="文章分类"
+              placement="bottom"
+              height="72vh"
+              open={mobilePanel === 'categories'}
+              onClose={closeMobilePanel}
+              className="mobile-panel-drawer"
+            >
+              {categoryPanelContent}
+            </Drawer>
+            <Drawer
+              title={activeCategory ? `${activeCategory} · 文章` : '文章列表'}
+              placement="bottom"
+              height="72vh"
+              open={mobilePanel === 'titles'}
+              onClose={closeMobilePanel}
+              className="mobile-panel-drawer"
+            >
+              {titlePanelContent}
+            </Drawer>
+            <Drawer
+              title="文章目录"
+              placement="bottom"
+              height="72vh"
+              open={mobilePanel === 'toc'}
+              onClose={closeMobilePanel}
+              className="mobile-panel-drawer"
+            >
+              {tocPanelContent}
+            </Drawer>
+          </>
+        ) : null}
 
         <Modal
           title="管理员验证"
@@ -845,6 +966,7 @@ function AdminLoginPage({ onSuccess, onBack }) {
   const [messageApi, contextHolder] = message.useMessage();
   const [token, setToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
+  const isMobile = detectPhoneDevice();
 
   const submitLogin = async () => {
     const nextToken = token.trim();
@@ -875,7 +997,7 @@ function AdminLoginPage({ onSuccess, onBack }) {
   };
 
   return (
-    <Layout className="page-layout">
+    <Layout className={`page-layout${isMobile ? ' phone-mode' : ''}`}>
       <Content className="login-page-content">
         {contextHolder}
         <section className="login-shell">
@@ -921,6 +1043,23 @@ function autoSaveStatusText(status) {
   if (status === 'error') return '自动保存失败';
   if (status === 'draft') return '填写标题和正文后会自动保存';
   return '编辑区已打开';
+}
+
+function detectPhoneDevice() {
+  if (typeof window === 'undefined' || typeof navigator === 'undefined') {
+    return false;
+  }
+
+  if (typeof navigator.userAgentData?.mobile === 'boolean') {
+    return navigator.userAgentData.mobile;
+  }
+
+  const userAgent = navigator.userAgent || '';
+  if (/iPhone|iPod|Windows Phone/i.test(userAgent)) {
+    return true;
+  }
+
+  return /Android/i.test(userAgent) && /Mobile/i.test(userAgent);
 }
 
 async function compressImageBeforeUpload(file) {
