@@ -1,4 +1,4 @@
-import { Children, cloneElement, isValidElement, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import {
   Alert,
   App as AntdApp,
@@ -1245,81 +1245,11 @@ function MarkdownPre({ children, node, ...props }) {
 }
 
 function MarkdownTable({ children, node, ...props }) {
-  const rows = Children.toArray(children);
-  const headerLabels = [];
-
-  rows.forEach((section) => {
-    if (!isValidElement(section) || section.type !== 'thead') {
-      return;
-    }
-
-    Children.forEach(section.props.children, (row) => {
-      if (!isValidElement(row)) {
-        return;
-      }
-
-      Children.forEach(row.props.children, (cell) => {
-        if (!isValidElement(cell)) {
-          return;
-        }
-        headerLabels.push(extractTextContent(cell.props.children));
-      });
-    });
-  });
-
-  const nextChildren = rows.map((section) => {
-    if (!isValidElement(section)) {
-      return section;
-    }
-
-    if (section.type !== 'tbody') {
-      return section;
-    }
-
-    const bodyRows = Children.toArray(section.props.children).map((row) => {
-      if (!isValidElement(row)) {
-        return row;
-      }
-
-      const cells = Children.toArray(row.props.children).map((cell, index) => {
-        if (!isValidElement(cell)) {
-          return cell;
-        }
-
-        const label = headerLabels[index] || `列 ${index + 1}`;
-
-        return cloneElement(cell, {
-          'data-table-label': label,
-        });
-      });
-
-      return cloneElement(row, undefined, cells);
-    });
-
-    return cloneElement(section, undefined, bodyRows);
-  });
-
   return (
     <div className="markdown-table-scroll">
-      <table {...props}>{nextChildren}</table>
+      <table {...props}>{children}</table>
     </div>
   );
-}
-
-function extractTextContent(value) {
-  if (typeof value === 'string' || typeof value === 'number') {
-    return String(value).trim();
-  }
-
-  if (Array.isArray(value)) {
-    return value.map(extractTextContent).join('').trim();
-  }
-
-  if (isValidElement(value)) {
-    return extractTextContent(value.props.children);
-  }
-
-  return '';
 }
 
 function createMarkdownComponents(items) {

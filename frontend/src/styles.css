@@ -602,6 +602,27 @@ textarea.editor-textarea {
 .markdown-code-scroll,
 .markdown-table-scroll {
   max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(106, 90, 68, 0.24) transparent;
+}
+
+.markdown-code-scroll::-webkit-scrollbar,
+.markdown-table-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.markdown-code-scroll::-webkit-scrollbar-track,
+.markdown-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.markdown-code-scroll::-webkit-scrollbar-thumb,
+.markdown-table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(106, 90, 68, 0.24);
 }
 
 .markdown-code-scroll {
@@ -612,7 +633,11 @@ textarea.editor-textarea {
 }
 
 .markdown-code-scroll pre {
+  width: max-content;
+  min-width: 100%;
+  max-width: none;
   margin: 0;
+  overflow: visible;
   border-radius: 0;
   background: transparent;
 }
@@ -951,9 +976,9 @@ textarea.editor-textarea {
   }
 
   .phone-mode .markdown-preview pre code {
-    white-space: pre-wrap;
-    overflow-wrap: anywhere;
-    word-break: break-word;
+    white-space: pre;
+    overflow-wrap: normal;
+    word-break: normal;
   }
 
   .phone-mode .markdown-code-scroll,
@@ -961,7 +986,7 @@ textarea.editor-textarea {
     width: 100%;
     max-width: 100%;
     margin: 16px 0;
-    padding: 0;
+    padding-bottom: 4px;
   }
 
   .phone-mode .markdown-code-scroll {
@@ -976,68 +1001,25 @@ textarea.editor-textarea {
 
   .phone-mode .markdown-code-scroll pre code {
     display: block;
-    min-width: 0;
-    white-space: pre-wrap;
+    min-width: max-content;
+    white-space: pre;
   }
 
   .phone-mode .markdown-table-scroll table {
-    width: 100%;
-    min-width: 0;
-    table-layout: fixed;
+    width: max-content;
+    min-width: 100%;
+    max-width: none;
+    table-layout: auto;
     font-size: 13px;
   }
 
   .phone-mode .markdown-table-scroll th,
   .phone-mode .markdown-table-scroll td {
+    min-width: 124px;
     padding: 10px 12px;
     white-space: normal;
     overflow-wrap: anywhere;
     word-break: break-word;
-  }
-
-  .phone-mode .markdown-table-scroll thead {
-    display: none;
-  }
-
-  .phone-mode .markdown-table-scroll,
-  .phone-mode .markdown-table-scroll table,
-  .phone-mode .markdown-table-scroll tbody,
-  .phone-mode .markdown-table-scroll tr,
-  .phone-mode .markdown-table-scroll td {
-    display: block;
-    width: 100%;
-  }
-
-  .phone-mode .markdown-table-scroll tr {
-    margin-bottom: 12px;
-    border: 1px solid rgba(106, 90, 68, 0.12);
-    border-radius: 14px;
-    background: rgba(255, 255, 255, 0.96);
-    overflow: hidden;
-  }
-
-  .phone-mode .markdown-table-scroll td {
-    position: relative;
-    padding: 10px 12px 10px 112px;
-    border: 0;
-    border-bottom: 1px solid rgba(106, 90, 68, 0.08);
-    min-height: 42px;
-  }
-
-  .phone-mode .markdown-table-scroll td:last-child {
-    border-bottom: 0;
-  }
-
-  .phone-mode .markdown-table-scroll td::before {
-    content: attr(data-table-label);
-    position: absolute;
-    left: 12px;
-    top: 10px;
-    width: 88px;
-    color: #7a6d5f;
-    font-size: 12px;
-    font-weight: 600;
-    line-height: 1.5;
   }
 }
 
