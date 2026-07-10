@@ -104,7 +104,7 @@ function AppContent() {
     [selectedDocument.content],
   );
 
-  const articleMarkdownComponents = createHeadingComponents(articleTocItems);
+  const articleMarkdownComponents = createMarkdownComponents(articleTocItems);
 
   useEffect(() => {
     loadAdminStatus();
@@ -1232,7 +1232,23 @@ function slugifyHeading(value) {
   return slug || 'section';
 }
 
-function createHeadingComponents(items) {
+function MarkdownPre({ children, node, ...props }) {
+  return (
+    <div className="markdown-code-scroll">
+      <pre {...props}>{children}</pre>
+    </div>
+  );
+}
+
+function MarkdownTable({ children, node, ...props }) {
+  return (
+    <div className="markdown-table-scroll">
+      <table {...props}>{children}</table>
+    </div>
+  );
+}
+
+function createMarkdownComponents(items) {
   let headingIndex = 0;
 
   const renderHeading = (Tag) => function HeadingComponent({ children }) {
@@ -1250,6 +1266,8 @@ function createHeadingComponents(items) {
     h4: renderHeading('h4'),
     h5: renderHeading('h5'),
     h6: renderHeading('h6'),
+    pre: MarkdownPre,
+    table: MarkdownTable,
   };
 }
 
