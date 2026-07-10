@@ -1076,23 +1076,27 @@ function detectPhoneDevice() {
     return false;
   }
 
-  const isNarrowViewport = typeof window.matchMedia === 'function'
-    ? window.matchMedia('(max-width: 980px)').matches
-    : window.innerWidth <= 980;
-  if (isNarrowViewport) {
-    return true;
-  }
-
   if (typeof navigator.userAgentData?.mobile === 'boolean') {
     return navigator.userAgentData.mobile;
   }
 
   const userAgent = navigator.userAgent || '';
-  if (/iPhone|iPod|Windows Phone/i.test(userAgent)) {
-    return true;
-  }
+  const touchPoints = navigator.maxTouchPoints || 0;
+  const coarsePointer = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(pointer: coarse)').matches
+    : false;
+  const screenShortSide = Math.min(
+    window.screen?.width || window.innerWidth,
+    window.screen?.height || window.innerHeight,
+  );
+  const viewportShortSide = Math.min(window.innerWidth, window.innerHeight);
+  const looksLikePhoneUa = /iPhone|iPod|Windows Phone|IEMobile|Mobile|Opera Mini|webOS/i.test(userAgent)
+    || (/Android/i.test(userAgent) && !/Tablet|Pad/i.test(userAgent));
+  const looksLikePhoneHardware = (coarsePointer || touchPoints > 0)
+    && screenShortSide <= 820
+    && viewportShortSide <= 980;
 
-  return /Android/i.test(userAgent) && /Mobile/i.test(userAgent);
+  return looksLikePhoneUa || looksLikePhoneHardware;
 }
 
 async function compressImageBeforeUpload(file) {

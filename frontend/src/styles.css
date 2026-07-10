@@ -630,6 +630,7 @@ textarea.editor-textarea {
   margin: 16px 0;
   border-radius: 18px;
   background: #181614;
+  position: relative;
 }
 
 .markdown-code-scroll pre {
@@ -644,6 +645,10 @@ textarea.editor-textarea {
 
 .markdown-table-scroll {
   margin: 16px 0;
+  position: relative;
+  border: 1px solid rgba(106, 90, 68, 0.1);
+  border-radius: 18px;
+  background: rgba(255, 255, 255, 0.82);
 }
 
 .markdown-table-scroll table {
@@ -981,8 +986,8 @@ textarea.editor-textarea {
   .phone-mode .markdown-table-scroll {
     width: 100%;
     max-width: 100%;
-    margin: 14px 0;
-    padding-bottom: 6px;
+    margin: 16px -6px;
+    padding: 28px 6px 8px;
     overflow-x: auto;
   }
 
@@ -997,8 +1002,33 @@ textarea.editor-textarea {
     border-radius: 16px;
   }
 
+  .phone-mode .markdown-code-scroll::before,
+  .phone-mode .markdown-table-scroll::before {
+    position: absolute;
+    top: 8px;
+    left: 8px;
+    display: inline-flex;
+    padding: 4px 8px;
+    border-radius: 999px;
+    font-size: 11px;
+    line-height: 1;
+    letter-spacing: 0.04em;
+    z-index: 1;
+    content: '左右滑动查看';
+  }
+
+  .phone-mode .markdown-code-scroll::before {
+    color: rgba(255, 255, 255, 0.78);
+    background: rgba(255, 255, 255, 0.12);
+  }
+
+  .phone-mode .markdown-table-scroll::before {
+    color: #6f6153;
+    background: rgba(106, 90, 68, 0.08);
+  }
+
   .phone-mode .markdown-code-scroll pre {
-    padding: 14px 12px;
+    padding: 12px;
     font-size: 12px;
     line-height: 1.65;
   }
