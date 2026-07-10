@@ -877,6 +877,10 @@ textarea.editor-textarea {
 }
 
 @media (max-width: 980px) {
+  .page-layout.phone-mode {
+    overflow-x: hidden;
+  }
+
   .phone-mode .content-card,
   .phone-mode .content-card .ant-card-body,
   .phone-mode .content-card .ant-space,
@@ -890,10 +894,19 @@ textarea.editor-textarea {
 
   .phone-mode .page-content {
     padding-bottom: 116px;
+    overflow-x: hidden;
   }
 
   .phone-mode .markdown-preview {
     overflow-x: hidden;
+  }
+
+  .phone-mode .document-preview {
+    overflow-x: hidden;
+  }
+
+  .phone-mode .markdown-preview > * {
+    max-width: 100%;
   }
 
   .phone-mode .hero-section,
@@ -983,10 +996,13 @@ textarea.editor-textarea {
 
   .phone-mode .markdown-code-scroll,
   .phone-mode .markdown-table-scroll {
+    display: block;
     width: 100%;
     max-width: 100%;
+    min-width: 0;
     margin: 16px 0;
     padding-bottom: 4px;
+    box-sizing: border-box;
   }
 
   .phone-mode .markdown-code-scroll {
