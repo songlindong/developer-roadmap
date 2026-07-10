@@ -820,6 +820,14 @@ textarea.editor-textarea {
 }
 
 @media (max-width: 980px) {
+  .phone-mode .content-card,
+  .phone-mode .content-card .ant-card-body,
+  .phone-mode .document-preview,
+  .phone-mode .markdown-preview {
+    min-width: 0;
+    max-width: 100%;
+  }
+
   .phone-mode .page-content {
     padding-bottom: 116px;
   }
@@ -874,6 +882,41 @@ textarea.editor-textarea {
 
   .phone-mode .mobile-nav-button.ant-btn {
     width: 100%;
+  }
+
+  .phone-mode .markdown-preview p,
+  .phone-mode .markdown-preview li,
+  .phone-mode .markdown-preview blockquote,
+  .phone-mode .markdown-preview td,
+  .phone-mode .markdown-preview th,
+  .phone-mode .markdown-preview a {
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .phone-mode .markdown-preview code {
+    white-space: break-spaces;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .phone-mode .markdown-preview pre {
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  .phone-mode .markdown-preview pre code {
+    white-space: pre;
+    overflow-wrap: normal;
+    word-break: normal;
+  }
+
+  .phone-mode .markdown-preview table {
+    display: block;
+    max-width: 100%;
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
   }
 }
 
