@@ -111,6 +111,32 @@ function AppContent() {
     loadDocuments();
   }, []);
 
+  useEffect(() => {
+    const updateMobileLayout = () => setIsMobile(detectPhoneDevice());
+    const mediaQuery = typeof window.matchMedia === 'function'
+      ? window.matchMedia('(max-width: 980px)')
+      : null;
+
+    updateMobileLayout();
+    if (mediaQuery?.addEventListener) {
+      mediaQuery.addEventListener('change', updateMobileLayout);
+    } else {
+      mediaQuery?.addListener?.(updateMobileLayout);
+    }
+    window.addEventListener('resize', updateMobileLayout);
+    window.addEventListener('orientationchange', updateMobileLayout);
+
+    return () => {
+      if (mediaQuery?.removeEventListener) {
+        mediaQuery.removeEventListener('change', updateMobileLayout);
+      } else {
+        mediaQuery?.removeListener?.(updateMobileLayout);
+      }
+      window.removeEventListener('resize', updateMobileLayout);
+      window.removeEventListener('orientationchange', updateMobileLayout);
+    };
+  }, []);
+
   useEffect(() => () => {
     if (autoSaveTimerRef.current) {
       clearTimeout(autoSaveTimerRef.current);
@@ -1048,6 +1074,13 @@ function autoSaveStatusText(status) {
 function detectPhoneDevice() {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return false;
+  }
+
+  const isNarrowViewport = typeof window.matchMedia === 'function'
+    ? window.matchMedia('(max-width: 980px)').matches
+    : window.innerWidth <= 980;
+  if (isNarrowViewport) {
+    return true;
   }
 
   if (typeof navigator.userAgentData?.mobile === 'boolean') {

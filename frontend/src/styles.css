@@ -832,6 +832,10 @@ textarea.editor-textarea {
     padding-bottom: 116px;
   }
 
+  .phone-mode .markdown-preview {
+    overflow-x: hidden;
+  }
+
   .phone-mode .hero-section,
   .phone-mode .login-shell {
     grid-template-columns: 1fr;
@@ -867,6 +871,7 @@ textarea.editor-textarea {
     position: fixed;
     left: 12px;
     right: 12px;
+    bottom: 12px;
     bottom: calc(12px + env(safe-area-inset-bottom));
     z-index: 30;
     display: grid;
@@ -877,6 +882,7 @@ textarea.editor-textarea {
     border-radius: 24px;
     background: rgba(255, 252, 247, 0.92);
     box-shadow: 0 20px 60px rgba(44, 35, 24, 0.12);
+    -webkit-backdrop-filter: blur(16px);
     backdrop-filter: blur(16px);
   }
 
@@ -886,11 +892,20 @@ textarea.editor-textarea {
 
   .phone-mode .markdown-preview p,
   .phone-mode .markdown-preview li,
+  .phone-mode .markdown-preview h1,
+  .phone-mode .markdown-preview h2,
+  .phone-mode .markdown-preview h3,
+  .phone-mode .markdown-preview h4,
+  .phone-mode .markdown-preview h5,
+  .phone-mode .markdown-preview h6,
   .phone-mode .markdown-preview blockquote,
   .phone-mode .markdown-preview td,
   .phone-mode .markdown-preview th,
-  .phone-mode .markdown-preview a {
+  .phone-mode .markdown-preview a,
+  .phone-mode .article-title,
+  .phone-mode .mobile-quick-title {
     overflow-wrap: anywhere;
+    word-wrap: break-word;
     word-break: break-word;
   }
 
@@ -901,7 +916,10 @@ textarea.editor-textarea {
   }
 
   .phone-mode .markdown-preview pre {
+    display: block;
+    width: 100%;
     max-width: 100%;
+    overflow-x: auto;
     -webkit-overflow-scrolling: touch;
   }
 
@@ -913,9 +931,15 @@ textarea.editor-textarea {
 
   .phone-mode .markdown-preview table {
     display: block;
+    width: 100%;
     max-width: 100%;
     overflow-x: auto;
     -webkit-overflow-scrolling: touch;
+    white-space: nowrap;
+  }
+
+  .phone-mode .markdown-preview th,
+  .phone-mode .markdown-preview td {
     white-space: nowrap;
   }
 }
@@ -974,6 +998,7 @@ textarea.editor-textarea {
   .phone-mode .mobile-quick-nav {
     left: 10px;
     right: 10px;
+    bottom: 10px;
     bottom: calc(10px + env(safe-area-inset-bottom));
     gap: 8px;
     padding: 8px;

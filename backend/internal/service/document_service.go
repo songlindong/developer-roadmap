@@ -12,9 +12,11 @@ import (
 )
 
 type DocumentSummary struct {
-	ID       uint   `json:"id"`
-	Title    string `json:"title"`
-	Category string `json:"category"`
+	ID        uint   `json:"id"`
+	Title     string `json:"title"`
+	Category  string `json:"category"`
+	CreatedAt string `json:"createdAt"`
+	UpdatedAt string `json:"updatedAt"`
 }
 
 type DocumentDetail struct {
@@ -55,9 +57,11 @@ func (s *DocumentService) ListDocuments(ctx context.Context) ([]DocumentSummary,
 	items := make([]DocumentSummary, 0, len(entities))
 	for _, entity := range entities {
 		items = append(items, DocumentSummary{
-			ID:       entity.ID,
-			Title:    entity.Title,
-			Category: entity.Category,
+			ID:        entity.ID,
+			Title:     entity.Title,
+			Category:  entity.Category,
+			CreatedAt: formatDisplayTime(entity.CreatedAt),
+			UpdatedAt: formatDisplayTime(entity.UpdatedAt),
 		})
 	}
 
