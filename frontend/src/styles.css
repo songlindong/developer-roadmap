@@ -604,6 +604,26 @@ textarea.editor-textarea {
   max-width: 100%;
   overflow-x: auto;
   -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;
+  touch-action: pan-x;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(106, 90, 68, 0.24) transparent;
+}
+
+.markdown-code-scroll::-webkit-scrollbar,
+.markdown-table-scroll::-webkit-scrollbar {
+  height: 6px;
+}
+
+.markdown-code-scroll::-webkit-scrollbar-track,
+.markdown-table-scroll::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+.markdown-code-scroll::-webkit-scrollbar-thumb,
+.markdown-table-scroll::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: rgba(106, 90, 68, 0.24);
 }
 
 .markdown-code-scroll {
@@ -961,6 +981,8 @@ textarea.editor-textarea {
   .phone-mode .markdown-table-scroll {
     width: 100%;
     max-width: 100%;
+    margin: 14px 0;
+    padding-bottom: 6px;
     overflow-x: auto;
   }
 
@@ -971,9 +993,39 @@ textarea.editor-textarea {
     max-width: none;
   }
 
+  .phone-mode .markdown-code-scroll {
+    border-radius: 16px;
+  }
+
+  .phone-mode .markdown-code-scroll pre {
+    padding: 14px 12px;
+    font-size: 12px;
+    line-height: 1.65;
+  }
+
+  .phone-mode .markdown-code-scroll pre code {
+    display: block;
+    min-width: max-content;
+    white-space: pre;
+  }
+
+  .phone-mode .markdown-table-scroll table {
+    table-layout: auto;
+    font-size: 13px;
+  }
+
   .phone-mode .markdown-table-scroll th,
   .phone-mode .markdown-table-scroll td {
-    white-space: nowrap;
+    min-width: 124px;
+    padding: 10px 12px;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    word-break: break-word;
+  }
+
+  .phone-mode .markdown-table-scroll th:last-child,
+  .phone-mode .markdown-table-scroll td:last-child {
+    min-width: 220px;
   }
 }
 
