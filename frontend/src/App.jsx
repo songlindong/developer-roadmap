@@ -11,7 +11,6 @@ import {
   Input,
   Layout,
   List,
-  Modal,
   Popconfirm,
   Space,
   Spin,
@@ -30,8 +29,8 @@ const { TextArea, Password } = Input;
 
 const ADMIN_TOKEN_KEY = 'roadmap_admin_token';
 const AUTO_SAVE_DELAY = 1200;
-const SHOW_ADMIN_ENTRY = import.meta.env.VITE_SHOW_ADMIN_ENTRY === 'true';
 const ADMIN_LOGIN_HASH = '#/admin-login';
+const ADMIN_DASHBOARD_HASH = '#/admin';
 const MAX_IMAGE_SIDE = 1600;
 const WEBP_QUALITY = 0.82;
 const EMPTY_DOCUMENT = {
@@ -43,7 +42,12 @@ const EMPTY_DOCUMENT = {
   updatedAt: '',
 };
 
-function AppContent() {
+function AppContent({
+  viewMode = 'reader',
+  onNavigateToAdmin,
+  onNavigateToReader,
+  onAuthLost,
+}) {
   const [messageApi, contextHolder] = message.useMessage();
   const [documents, setDocuments] = useState([]);
   const [selectedDocument, setSelectedDocument] = useState(EMPTY_DOCUMENT);
@@ -57,10 +61,6 @@ function AppContent() {
   const [deleting, setDeleting] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
   const [error, setError] = useState('');
-  const [isAdmin, setIsAdmin] = useState(false);
-  const [adminConfigured, setAdminConfigured] = useState(false);
-  const [adminModalOpen, setAdminModalOpen] = useState(false);
-  const [adminTokenInput, setAdminTokenInput] = useState('');
   const [tocCollapsed, setTocCollapsed] = useState(false);
   const [activeHeadingId, setActiveHeadingId] = useState('');
   const [isMobile, setIsMobile] = useState(() => detectPhoneDevice());
@@ -68,6 +68,7 @@ function AppContent() {
   const autoSaveTimerRef = useRef(null);
   const imageInputRef = useRef(null);
   const tocListRef = useRef(null);
+  const isManagementMode = viewMode === 'admin';
 
   const categoryStats = useMemo(() => {
     const counts = new Map();
@@ -154,7 +155,7 @@ function AppContent() {
   }, [isMobile]);
 
   useEffect(() => {
-    if (isAdmin || tocCollapsed || articleTocItems.length === 0) {
+    if (isManagementMode || tocCollapsed || articleTocItems.length === 0) {
       setActiveHeadingId('');
       return undefined;
     }
@@ -188,7 +189,7 @@ function AppContent() {
     setActiveHeadingId(headings[0].id);
 
     return () => observer.disconnect();
-  }, [articleTocItems, isAdmin, selectedDocument.id, tocCollapsed]);
+  }, [articleTocItems, isManagementMode, selectedDocument.id, tocCollapsed]);
 
   useEffect(() => {
     if (!activeHeadingId || tocCollapsed) {
@@ -212,13 +213,14 @@ function AppContent() {
     try {
       const response = await http.get('admin/status');
       const data = response.data.data || {};
-      setIsAdmin(Boolean(data.authenticated));
-      setAdminConfigured(Boolean(data.configured));
+      if (!data.authenticated) {
+        onAuthLost?.();
+      }
       return data;
     } catch {
-      setIsAdmin(false);
-      setAdminConfigured(false);
-      return { authenticated: false, configured: false };
+      const nextStatus = { authenticated: false, configured: false };
+      onAuthLost?.();
+      return nextStatus;
     }
   };
 
@@ -241,6 +243,9 @@ function AppContent() {
       const response = await http.get(`documents/${id}`);
       setSelectedDocument(response.data.data || EMPTY_DOCUMENT);
     } catch (requestError) {
+      if (requestError?.response?.status === 403) {
+        onAuthLost?.();
+      }
       setError(requestError?.response?.data?.message || '暂时无法加载文章详情。');
     } finally {
       setDetailLoading(false);
@@ -279,6 +284,9 @@ function AppContent() {
         setSelectedDocument(EMPTY_DOCUMENT);
       }
     } catch (requestError) {
+      if (requestError?.response?.status === 403) {
+        onAuthLost?.();
+      }
       setError(requestError?.response?.data?.message || '暂时无法加载文章列表，请确认后端服务已启动。');
     } finally {
       setListLoading(false);
@@ -434,6 +442,7 @@ function AppContent() {
       }
       if (requestError?.response?.status === 403) {
         await loadAdminStatus();
+        onAuthLost?.();
       }
       return null;
     } finally {
@@ -462,32 +471,17 @@ function AppContent() {
       messageApi.error(nextError);
       if (requestError?.response?.status === 403) {
         await loadAdminStatus();
+        onAuthLost?.();
       }
     } finally {
       setDeleting(false);
     }
   };
 
-  const submitAdminToken = async () => {
-    window.localStorage.setItem(ADMIN_TOKEN_KEY, adminTokenInput.trim());
-    const data = await loadAdminStatus();
-
-    if (data.authenticated) {
-      setAdminModalOpen(false);
-      setAdminTokenInput('');
-      messageApi.success('已进入管理模式');
-      return;
-    }
-
-    window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-    messageApi.error('管理员口令不正确');
-  };
-
   const logoutAdmin = async () => {
     window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-    setAdminTokenInput('');
     closeEditor();
-    await loadAdminStatus();
+    onAuthLost?.();
   };
 
   const openImagePicker = () => {
@@ -543,7 +537,7 @@ function AppContent() {
   };
 
   useEffect(() => {
-    if (!isAdmin || !editorVisible) {
+    if (!isManagementMode || !editorVisible) {
       return undefined;
     }
 
@@ -578,10 +572,10 @@ function AppContent() {
         clearTimeout(autoSaveTimerRef.current);
       }
     };
-  }, [editorDocument, editorVisible, isAdmin, savedDraft]);
+  }, [editorDocument, editorVisible, isManagementMode, savedDraft]);
 
   const editorTitle = editorDocument.id ? '编辑文章' : '新增文章';
-  const showVisitorToc = !isAdmin && articleTocItems.length > 0 && Boolean(selectedDocument.content);
+  const showVisitorToc = !isManagementMode && articleTocItems.length > 0 && Boolean(selectedDocument.content);
   const hasActiveCategory = Boolean(activeCategory);
   const openMobilePanel = (panelName) => setMobilePanel(panelName);
   const closeMobilePanel = () => setMobilePanel('');
@@ -680,14 +674,16 @@ function AppContent() {
         <section className="hero-section">
           <div className="hero-copy">
             <Text className="hero-eyebrow">Knowledge Base</Text>
-            <Title level={2} className="hero-title">文章与文档</Title>
+            <Title level={2} className="hero-title">{isManagementMode ? '私有管理台' : '私有阅读站'}</Title>
             <Paragraph className="hero-text">
-              用更简洁的方式管理分类、文章与内容预览，界面保持克制，重点只留给内容本身。
+              {isManagementMode
+                ? '这里是私有管理台，用最简洁的方式维护分类、文章与内容编辑。'
+                : '这里是私有阅读站，只保留克制的阅读体验，方便你专注查看内容本身。'}
             </Paragraph>
             <Space wrap size={10} className="hero-meta">
               <span className="hero-meta-item">分类 {categoryStats.length}</span>
               <span className="hero-meta-item">文章 {documents.length}</span>
-              <span className="hero-meta-item">{isAdmin ? '当前为管理模式' : '当前为访客模式'}</span>
+              <span className="hero-meta-item">{isManagementMode ? '当前为私有管理台' : '当前为私有阅读站'}</span>
             </Space>
           </div>
           <div className="hero-actions">
@@ -695,21 +691,23 @@ function AppContent() {
               <Button className="soft-button" onClick={() => loadDocuments(selectedDocument.id, activeCategory)} loading={listLoading}>
                 刷新内容
               </Button>
-              {isAdmin ? (
+              {isManagementMode ? (
                 <Button type="primary" className="primary-button" onClick={openCreateEditor}>
                   新建文章
                 </Button>
-              ) : null}
-              {SHOW_ADMIN_ENTRY && !isAdmin && adminConfigured ? (
-                <Button type="text" className="ghost-link-button" onClick={() => setAdminModalOpen(true)}>
-                  管理员入口
+              ) : (
+                <Button type="text" className="ghost-link-button" onClick={onNavigateToAdmin}>
+                  进入管理台
+                </Button>
+              )}
+              {isManagementMode ? (
+                <Button type="text" className="ghost-link-button" onClick={onNavigateToReader}>
+                  返回阅读站
                 </Button>
               ) : null}
-              {isAdmin ? (
-                <Button type="text" className="ghost-link-button" onClick={logoutAdmin}>
-                  退出管理
-                </Button>
-              ) : null}
+              <Button type="text" className="ghost-link-button" onClick={logoutAdmin}>
+                退出登录
+              </Button>
             </Space>
           </div>
         </section>
@@ -755,7 +753,7 @@ function AppContent() {
           ) : null}
 
           <Space direction="vertical" size={16} className="full-width">
-            {isAdmin && editorVisible ? (
+            {isManagementMode && editorVisible ? (
               <Card className="panel-card editor-card">
                 <div className="editor-head">
                   <div>
@@ -836,7 +834,7 @@ function AppContent() {
                     <Text className="panel-eyebrow">Preview</Text>
                     <Title level={4} className="panel-title">文章内容</Title>
                   </div>
-                  {isAdmin && selectedDocument.id ? (
+                  {isManagementMode && selectedDocument.id ? (
                     <Space size={8}>
                       <Button size="small" className="soft-button" onClick={openEditEditor}>
                         编辑
@@ -962,37 +960,17 @@ function AppContent() {
             </Drawer>
           </>
         ) : null}
-
-        <Modal
-          title="管理员验证"
-          open={adminModalOpen}
-          onOk={submitAdminToken}
-          onCancel={() => setAdminModalOpen(false)}
-          okText="进入管理"
-          cancelText="取消"
-          className="admin-modal"
-          okButtonProps={{ className: 'primary-button' }}
-        >
-          <Space direction="vertical" size={12} className="full-width">
-            <Text className="modal-tip">输入你配置在后端环境变量里的管理员口令。</Text>
-            <Password
-              placeholder="请输入管理员口令"
-              value={adminTokenInput}
-              onChange={(event) => setAdminTokenInput(event.target.value)}
-              onPressEnter={submitAdminToken}
-            />
-          </Space>
-        </Modal>
       </Content>
     </Layout>
   );
 }
 
-function AdminLoginPage({ onSuccess, onBack }) {
+function PrivateAccessPage({ mode = 'reader', onSuccess, onBack }) {
   const [messageApi, contextHolder] = message.useMessage();
   const [token, setToken] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const isMobile = detectPhoneDevice();
+  const isManagementMode = mode === 'admin';
 
   const submitLogin = async () => {
     const nextToken = token.trim();
@@ -1007,7 +985,7 @@ function AdminLoginPage({ onSuccess, onBack }) {
     try {
       const response = await http.get('admin/status');
       if (response.data?.data?.authenticated) {
-        messageApi.success('已进入管理模式');
+        messageApi.success(isManagementMode ? '已进入私有管理台' : '已进入私有阅读站');
         onSuccess();
         return;
       }
@@ -1029,14 +1007,18 @@ function AdminLoginPage({ onSuccess, onBack }) {
         <section className="login-shell">
           <div className="login-copy">
             <Text className="hero-eyebrow">Private Access</Text>
-            <Title level={2} className="login-title">管理员登录</Title>
+            <Title level={2} className="login-title">{isManagementMode ? '私有管理台' : '私有阅读站'}</Title>
             <Paragraph className="login-text">
-              这是一个不在首页暴露的隐藏管理页。输入管理员口令后进入管理模式，用于新建、编辑和删除文章。
+              {isManagementMode
+                ? '输入管理员口令后进入私有管理台，用于新建、编辑和删除文章。'
+                : '输入管理员口令后进入私有阅读站，只保留阅读体验，不展示编辑能力。'}
             </Paragraph>
           </div>
           <Card className="login-card">
             <Space direction="vertical" size={18} className="full-width">
-              <Text className="modal-tip">仅管理员可访问，验证成功后会自动返回首页。</Text>
+              <Text className="modal-tip">
+                {isManagementMode ? '仅你自己可进入私有管理台。' : '仅你自己可进入私有阅读站。'}
+              </Text>
               <Password
                 size="large"
                 placeholder="请输入管理员口令"
@@ -1047,10 +1029,10 @@ function AdminLoginPage({ onSuccess, onBack }) {
               <div className="login-actions">
                 <Space wrap>
                   <Button className="soft-button" onClick={onBack}>
-                    返回首页
+                    {isManagementMode ? '前往阅读站' : '刷新验证'}
                   </Button>
                   <Button type="primary" className="primary-button" onClick={submitLogin} loading={submitting}>
-                    登录管理
+                    {isManagementMode ? '进入管理台' : '进入阅读站'}
                   </Button>
                 </Space>
               </div>
@@ -1357,28 +1339,105 @@ function pickCategory(items, preferredCategory) {
   return names[0] || '';
 }
 
+function normalizeRoute(hash) {
+  if (hash === ADMIN_DASHBOARD_HASH) {
+    return ADMIN_DASHBOARD_HASH;
+  }
+
+  if (hash === ADMIN_LOGIN_HASH) {
+    return ADMIN_LOGIN_HASH;
+  }
+
+  return '';
+}
+
 function AppRoutes() {
-  const [route, setRoute] = useState(window.location.hash || '');
+  const [route, setRoute] = useState(() => normalizeRoute(window.location.hash || ''));
+  const [authState, setAuthState] = useState({
+    loading: true,
+    authenticated: false,
+    configured: false,
+  });
+
+  const syncAuthStatus = async () => {
+    try {
+      const response = await http.get('admin/status');
+      const data = response.data?.data || {};
+      setAuthState({
+        loading: false,
+        authenticated: Boolean(data.authenticated),
+        configured: Boolean(data.configured),
+      });
+      return data;
+    } catch {
+      setAuthState({
+        loading: false,
+        authenticated: false,
+        configured: false,
+      });
+      return { authenticated: false, configured: false };
+    }
+  };
 
   useEffect(() => {
     const handleHashChange = () => {
-      setRoute(window.location.hash || '');
+      setRoute(normalizeRoute(window.location.hash || ''));
     };
 
     window.addEventListener('hashchange', handleHashChange);
     return () => window.removeEventListener('hashchange', handleHashChange);
   }, []);
 
-  const goHome = () => {
-    window.location.hash = '';
-    setRoute('');
+  useEffect(() => {
+    syncAuthStatus();
+  }, []);
+
+  const navigateTo = (nextRoute = '') => {
+    window.location.hash = nextRoute;
+    setRoute(normalizeRoute(nextRoute));
   };
 
-  if (route === ADMIN_LOGIN_HASH) {
-    return <AdminLoginPage onSuccess={goHome} onBack={goHome} />;
+  const handleAuthLost = async () => {
+    window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+    const targetRoute = route === ADMIN_DASHBOARD_HASH ? ADMIN_LOGIN_HASH : '';
+    await syncAuthStatus();
+    navigateTo(targetRoute);
+  };
+
+  const handleLoginSuccess = async (nextRoute) => {
+    await syncAuthStatus();
+    navigateTo(nextRoute);
+  };
+
+  if (authState.loading) {
+    return (
+      <Layout className="page-layout">
+        <Content className="login-page-content">
+          <div className="loading-box"><Spin /></div>
+        </Content>
+      </Layout>
+    );
   }
 
-  return <AppContent />;
+  if (!authState.authenticated) {
+    const loginMode = route === ADMIN_DASHBOARD_HASH || route === ADMIN_LOGIN_HASH ? 'admin' : 'reader';
+    return (
+      <PrivateAccessPage
+        mode={loginMode}
+        onSuccess={() => handleLoginSuccess(loginMode === 'admin' ? ADMIN_DASHBOARD_HASH : '')}
+        onBack={() => navigateTo('')}
+      />
+    );
+  }
+
+  return (
+    <AppContent
+      viewMode={route === ADMIN_DASHBOARD_HASH || route === ADMIN_LOGIN_HASH ? 'admin' : 'reader'}
+      onNavigateToAdmin={() => navigateTo(ADMIN_DASHBOARD_HASH)}
+      onNavigateToReader={() => navigateTo('')}
+      onAuthLost={handleAuthLost}
+    />
+  );
 }
 
 export default function App() {

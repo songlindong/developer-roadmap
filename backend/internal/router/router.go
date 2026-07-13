@@ -41,10 +41,10 @@ func New(cfg config.Config, documentHandler *handler.DocumentHandler) *gin.Engin
 				},
 			})
 		})
-		api.GET("/documents", documentHandler.ListDocuments)
-		api.GET("/documents/:id", documentHandler.GetDocument)
 		admin := api.Group("")
 		admin.Use(requireAdmin(cfg))
+		admin.GET("/documents", documentHandler.ListDocuments)
+		admin.GET("/documents/:id", documentHandler.GetDocument)
 		admin.POST("/upload/image", documentHandler.UploadImage)
 		admin.POST("/documents", documentHandler.CreateDocument)
 		admin.PUT("/documents/:id", documentHandler.UpdateDocument)
