@@ -1,0 +1,19 @@
+{
+  "name": "developer-roadmap-workspace",
+  "private": true,
+  "version": "0.1.0",
+  "description": "SDD 开发 Harness 的仓库级命令",
+  "scripts": {
+    "harness": "node ./harness/cli.mjs",
+    "doctor": "node ./harness/cli.mjs doctor",
+    "spec:new": "node ./harness/cli.mjs new",
+    "spec:check": "node ./harness/cli.mjs spec-check",
+    "check": "node ./harness/cli.mjs check",
+    "test": "node ./harness/cli.mjs test",
+    "build": "node ./harness/cli.mjs build",
+    "verify": "node ./harness/cli.mjs verify"
+  },
+  "engines": {
+    "node": ">=18"
+  }
+}

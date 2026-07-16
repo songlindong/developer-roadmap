@@ -5,6 +5,8 @@
   "type": "module",
   "scripts": {
     "dev": "vite",
+    "lint": "eslint \"src/**/*.{js,jsx}\" vite.config.js \"tests/**/*.mjs\"",
+    "test": "node --test",
     "build": "vite build",
     "preview": "vite preview --host"
   },
@@ -19,6 +21,8 @@
   },
   "devDependencies": {
     "@vitejs/plugin-react": "^4.7.0",
+    "eslint": "^8.57.1",
+    "eslint-plugin-react": "^7.37.5",
     "vite": "^4.5.14"
   }
 }

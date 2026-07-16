@@ -22,6 +22,11 @@ import ReactMarkdown from 'react-markdown';
 import remarkGfm from 'remark-gfm';
 import remarkBreaks from 'remark-breaks';
 import http from './api/http';
+import {
+  extractMarkdownHeadings,
+  normalizeCategory,
+  pickCategory,
+} from './lib/documents';
 
 const { Content } = Layout;
 const { Paragraph, Text, Title } = Typography;
@@ -1044,15 +1049,6 @@ function PrivateAccessPage({ mode = 'reader', onSuccess, onBack }) {
   );
 }
 
-function autoSaveStatusText(status) {
-  if (status === 'saving') return '自动保存中...';
-  if (status === 'waiting') return '检测到修改，即将自动保存';
-  if (status === 'saved') return '内容已自动保存';
-  if (status === 'error') return '自动保存失败';
-  if (status === 'draft') return '填写标题和正文后会自动保存';
-  return '编辑区已打开';
-}
-
 function detectPhoneDevice() {
   if (typeof window === 'undefined' || typeof navigator === 'undefined') {
     return false;
@@ -1147,75 +1143,6 @@ function formatSize(size) {
   if (size < 1024) return `${size} B`;
   if (size < 1024 * 1024) return `${(size / 1024).toFixed(1)} KB`;
   return `${(size / (1024 * 1024)).toFixed(2)} MB`;
-}
-
-function extractMarkdownHeadings(content) {
-  if (!content) {
-    return [];
-  }
-
-  const items = [];
-  const usedIds = new Map();
-  const lines = content.split('\n');
-  let inCodeBlock = false;
-
-  lines.forEach((line) => {
-    const trimmed = line.trim();
-    if (trimmed.startsWith('```')) {
-      inCodeBlock = !inCodeBlock;
-      return;
-    }
-    if (inCodeBlock) {
-      return;
-    }
-
-    const match = trimmed.match(/^(#{1,6})\s+(.+?)\s*#*\s*$/);
-    if (!match) {
-      return;
-    }
-
-    const level = match[1].length;
-    if (level > 2) {
-      return;
-    }
-
-    const text = cleanupHeadingText(match[2]);
-    if (!text) {
-      return;
-    }
-
-    const baseId = slugifyHeading(text);
-    const count = (usedIds.get(baseId) || 0) + 1;
-    usedIds.set(baseId, count);
-
-    items.push({
-      id: count === 1 ? baseId : `${baseId}-${count}`,
-      level,
-      text,
-    });
-  });
-
-  return items;
-}
-
-function cleanupHeadingText(value) {
-  return value
-    .replace(/!\[([^\]]*)\]\([^)]+\)/g, '$1')
-    .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1')
-    .replace(/[`*_~]/g, '')
-    .trim();
-}
-
-function slugifyHeading(value) {
-  const slug = value
-    .toLowerCase()
-    .trim()
-    .replace(/\s+/g, '-')
-    .replace(/[^\w\u4e00-\u9fa5-]/g, '')
-    .replace(/-+/g, '-')
-    .replace(/^-|-$/g, '');
-
-  return slug || 'section';
 }
 
 function MarkdownPre({ children, node, ...props }) {
@@ -1325,18 +1252,6 @@ function createMarkdownComponents(items) {
     pre: MarkdownPre,
     table: MarkdownTable,
   };
-}
-
-function normalizeCategory(value) {
-  return typeof value === 'string' && value.trim() ? value.trim() : '未分类';
-}
-
-function pickCategory(items, preferredCategory) {
-  const names = Array.from(new Set(items.map((item) => normalizeCategory(item.category))));
-  if (preferredCategory && names.includes(preferredCategory)) {
-    return preferredCategory;
-  }
-  return names[0] || '';
 }
 
 function normalizeRoute(hash) {

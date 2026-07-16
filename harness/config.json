@@ -1,0 +1,60 @@
+{
+  "version": 1,
+  "tools": [
+    { "name": "node", "args": ["--version"], "hint": "请安装 Node.js 18 或更高版本" },
+    { "name": "npm", "args": ["--version"], "hint": "npm 随 Node.js 一同提供" },
+    { "name": "go", "args": ["version"], "hint": "请安装 Go 1.25 或更高版本" },
+    { "name": "git", "args": ["--version"], "hint": "请安装 Git" }
+  ],
+  "gates": {
+    "check": [
+      {
+        "name": "后端格式检查",
+        "command": "gofmt",
+        "args": ["-l", "."],
+        "cwd": "backend",
+        "expectEmptyOutput": true
+      },
+      {
+        "name": "后端 vet 检查",
+        "command": "go",
+        "args": ["vet", "./..."],
+        "cwd": "backend"
+      },
+      {
+        "name": "前端 lint 检查",
+        "command": "npm",
+        "args": ["run", "lint"],
+        "cwd": "frontend"
+      }
+    ],
+    "test": [
+      {
+        "name": "后端测试",
+        "command": "go",
+        "args": ["test", "./..."],
+        "cwd": "backend"
+      },
+      {
+        "name": "前端测试",
+        "command": "npm",
+        "args": ["test"],
+        "cwd": "frontend"
+      }
+    ],
+    "build": [
+      {
+        "name": "后端构建",
+        "command": "go",
+        "args": ["build", "./..."],
+        "cwd": "backend"
+      },
+      {
+        "name": "前端构建",
+        "command": "npm",
+        "args": ["run", "build"],
+        "cwd": "frontend"
+      }
+    ]
+  }
+}

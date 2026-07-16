@@ -1,5 +1,30 @@
 # Developer Roadmap
 
+一个基于 React、Go 和 MySQL 的私有知识/面试文档站点。本仓库采用
+规格驱动开发（Specification-Driven Development，SDD）和统一开发 Harness。
+
+## SDD 开发流程
+
+```powershell
+# 首次检查本机环境
+npm run doctor
+
+# 为一个新需求创建规格（先填写并评审规格，再开始编码）
+npm run spec:new -- document-search "文档搜索"
+
+# 实现期间随时运行快速检查/测试
+npm run check
+npm test
+
+# 交付前运行完整质量门
+npm run verify
+```
+
+新需求的规格在 `specs/changes/<slug>/`。状态依次为
+`proposed（提议） -> approved（已批准） -> implemented（已实现） -> verified（已验证）`。详细流程见
+`specs/README.md`，架构边界见 `docs/architecture.md`，所有开发者与 AI
+协作规则见 `AGENTS.md`。
+
 一个简洁的文档管理模板，包含：
 
 - 前端：Vite + React + Axios + Ant Design

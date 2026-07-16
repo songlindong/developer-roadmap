@@ -1,0 +1,8 @@
+{
+  "id": "{{id}}",
+  "title": "{{title}}",
+  "status": "proposed",
+  "created": "{{date}}",
+  "updated": "{{date}}"
+}
+
