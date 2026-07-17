@@ -32,6 +32,7 @@ const { Content } = Layout;
 const { Paragraph, Text, Title } = Typography;
 const { TextArea, Password } = Input;
 
+const ACCESS_TOKEN_KEY = 'roadmap_access_token';
 const ADMIN_TOKEN_KEY = 'roadmap_admin_token';
 const AUTO_SAVE_DELAY = 1200;
 const ADMIN_LOGIN_HASH = '#/admin-login';
@@ -217,14 +218,16 @@ function AppContent({
   const loadAdminStatus = async () => {
     try {
       const response = await http.get('admin/status');
-      const data = response.data.data || {};
-      if (!data.authenticated) {
+      const data = response.data.data || { authenticated: false, configured: false };
+      if (isManagementMode && !data.authenticated) {
         onAuthLost?.();
       }
       return data;
     } catch {
       const nextStatus = { authenticated: false, configured: false };
-      onAuthLost?.();
+      if (isManagementMode) {
+        onAuthLost?.();
+      }
       return nextStatus;
     }
   };
@@ -484,6 +487,7 @@ function AppContent({
   };
 
   const logoutAdmin = async () => {
+    window.localStorage.removeItem(ACCESS_TOKEN_KEY);
     window.localStorage.removeItem(ADMIN_TOKEN_KEY);
     closeEditor();
     onAuthLost?.();
@@ -985,20 +989,22 @@ function PrivateAccessPage({ mode = 'reader', onSuccess, onBack }) {
     }
 
     setSubmitting(true);
-    window.localStorage.setItem(ADMIN_TOKEN_KEY, nextToken);
+    const storageKey = isManagementMode ? ADMIN_TOKEN_KEY : ACCESS_TOKEN_KEY;
+    const statusPath = isManagementMode ? 'admin/status' : 'access/status';
+    window.localStorage.setItem(storageKey, nextToken);
 
     try {
-      const response = await http.get('admin/status');
+      const response = await http.get(statusPath);
       if (response.data?.data?.authenticated) {
         messageApi.success(isManagementMode ? '已进入私有管理台' : '已进入私有阅读站');
         onSuccess();
         return;
       }
 
-      window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-      messageApi.error('管理员口令不正确');
+      window.localStorage.removeItem(storageKey);
+      messageApi.error(isManagementMode ? '管理口令不正确' : '阅读口令不正确');
     } catch (requestError) {
-      window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+      window.localStorage.removeItem(storageKey);
       messageApi.error(requestError?.response?.data?.message || '验证失败，请稍后重试');
     } finally {
       setSubmitting(false);
@@ -1015,8 +1021,8 @@ function PrivateAccessPage({ mode = 'reader', onSuccess, onBack }) {
             <Title level={2} className="login-title">{isManagementMode ? '私有管理台' : '私有阅读站'}</Title>
             <Paragraph className="login-text">
               {isManagementMode
-                ? '输入管理员口令后进入私有管理台，用于新建、编辑和删除文章。'
-                : '输入管理员口令后进入私有阅读站，只保留阅读体验，不展示编辑能力。'}
+                ? '输入管理口令后进入私有管理台，用于新建、编辑和删除文章。'
+                : '输入阅读口令后进入私有阅读站，只保留阅读体验，不展示编辑能力。'}
             </Paragraph>
           </div>
           <Card className="login-card">
@@ -1026,7 +1032,7 @@ function PrivateAccessPage({ mode = 'reader', onSuccess, onBack }) {
               </Text>
               <Password
                 size="large"
-                placeholder="请输入管理员口令"
+                placeholder={isManagementMode ? '请输入管理口令' : '请输入阅读口令'}
                 value={token}
                 onChange={(event) => setToken(event.target.value)}
                 onPressEnter={submitLogin}
@@ -1270,27 +1276,40 @@ function AppRoutes() {
   const [route, setRoute] = useState(() => normalizeRoute(window.location.hash || ''));
   const [authState, setAuthState] = useState({
     loading: true,
-    authenticated: false,
-    configured: false,
+    readerAuthenticated: false,
+    adminAuthenticated: false,
+    readerConfigured: false,
+    adminConfigured: false,
   });
 
   const syncAuthStatus = async () => {
     try {
-      const response = await http.get('admin/status');
-      const data = response.data?.data || {};
+      const [accessResponse, adminResponse] = await Promise.all([
+        http.get('access/status'),
+        http.get('admin/status'),
+      ]);
+      const accessData = accessResponse.data?.data || {};
+      const adminData = adminResponse.data?.data || {};
       setAuthState({
         loading: false,
-        authenticated: Boolean(data.authenticated),
-        configured: Boolean(data.configured),
+        readerAuthenticated: Boolean(accessData.authenticated),
+        adminAuthenticated: Boolean(adminData.authenticated),
+        readerConfigured: Boolean(accessData.configured),
+        adminConfigured: Boolean(adminData.configured),
       });
-      return data;
+      return { accessData, adminData };
     } catch {
       setAuthState({
         loading: false,
-        authenticated: false,
-        configured: false,
+        readerAuthenticated: false,
+        adminAuthenticated: false,
+        readerConfigured: false,
+        adminConfigured: false,
       });
-      return { authenticated: false, configured: false };
+      return {
+        accessData: { authenticated: false, configured: false },
+        adminData: { authenticated: false, configured: false },
+      };
     }
   };
 
@@ -1313,8 +1332,12 @@ function AppRoutes() {
   };
 
   const handleAuthLost = async () => {
-    window.localStorage.removeItem(ADMIN_TOKEN_KEY);
-    const targetRoute = route === ADMIN_DASHBOARD_HASH ? ADMIN_LOGIN_HASH : '';
+    if (route === ADMIN_DASHBOARD_HASH || route === ADMIN_LOGIN_HASH) {
+      window.localStorage.removeItem(ADMIN_TOKEN_KEY);
+    } else {
+      window.localStorage.removeItem(ACCESS_TOKEN_KEY);
+    }
+    const targetRoute = route === ADMIN_DASHBOARD_HASH || route === ADMIN_LOGIN_HASH ? ADMIN_LOGIN_HASH : '';
     await syncAuthStatus();
     navigateTo(targetRoute);
   };
@@ -1334,8 +1357,11 @@ function AppRoutes() {
     );
   }
 
-  if (!authState.authenticated) {
-    const loginMode = route === ADMIN_DASHBOARD_HASH || route === ADMIN_LOGIN_HASH ? 'admin' : 'reader';
+  const requiresAdmin = route === ADMIN_DASHBOARD_HASH || route === ADMIN_LOGIN_HASH;
+  const canEnterCurrentRoute = requiresAdmin ? authState.adminAuthenticated : authState.readerAuthenticated;
+
+  if (!canEnterCurrentRoute) {
+    const loginMode = requiresAdmin ? 'admin' : 'reader';
     return (
       <PrivateAccessPage
         mode={loginMode}

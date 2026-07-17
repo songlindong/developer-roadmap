@@ -1,5 +1,6 @@
 import axios from 'axios';
 
+const ACCESS_TOKEN_KEY = 'roadmap_access_token';
 const ADMIN_TOKEN_KEY = 'roadmap_admin_token';
 
 const http = axios.create({
@@ -9,12 +10,14 @@ const http = axios.create({
 
 http.interceptors.request.use((config) => {
   const nextConfig = { ...config };
-  const token = window.localStorage.getItem(ADMIN_TOKEN_KEY);
+  const accessToken = window.localStorage.getItem(ACCESS_TOKEN_KEY);
+  const adminToken = window.localStorage.getItem(ADMIN_TOKEN_KEY);
 
-  if (token) {
+  if (accessToken || adminToken) {
     nextConfig.headers = {
       ...nextConfig.headers,
-      'X-Admin-Token': token,
+      ...(accessToken ? { 'X-Access-Token': accessToken } : {}),
+      ...(adminToken ? { 'X-Admin-Token': adminToken } : {}),
     };
   }
 
